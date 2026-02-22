@@ -84,7 +84,6 @@ export default function ReviewPage() {
   if (submitted) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
-        <div className="text-4xl mb-3">✅</div>
         <p className="text-gray-700 font-medium">Done. Your agent is continuing.</p>
         <p className="text-gray-400 text-sm mt-1">You can close this tab.</p>
       </div>
@@ -133,14 +132,14 @@ export default function ReviewPage() {
             )
 
             return (
-              <div key={p.id} className="group flex items-start gap-3 p-4 bg-white border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
+              <div key={p.id} className="group relative flex items-start gap-3 p-4 bg-white border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
                 <p className="text-sm text-gray-700 flex-1 leading-relaxed">{p.content}</p>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                   <button
                     onClick={() => startRewrite(p.id)}
                     title="Rewrite"
-                    className="text-gray-300 hover:text-blue-500 text-base px-1"
-                  >↺</button>
+                    className="text-xs text-gray-300 hover:text-blue-500 px-1.5 py-1 rounded hover:bg-blue-50 transition-colors"
+                  >Rewrite</button>
                   <DeleteButton onConfirm={(reason) => deleteParagraph(p.id, reason)} />
                 </div>
               </div>
@@ -180,20 +179,27 @@ function DeleteButton({ onConfirm }: { onConfirm: (reason: string) => void }) {
   const reasons = ['Too formal', 'Too casual', 'Irrelevant', 'Wrong tone', 'Other']
 
   if (!open) return (
-    <button onClick={() => setOpen(true)} title="Delete" className="text-gray-300 hover:text-red-400 text-base px-1">🗑</button>
+    <button
+      onClick={() => setOpen(true)}
+      title="Delete"
+      className="text-xs text-gray-300 hover:text-red-400 px-1.5 py-1 rounded hover:bg-red-50 transition-colors"
+    >Delete</button>
   )
 
   return (
-    <div className="absolute z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-2 right-0 mt-6">
-      <p className="text-xs text-gray-400 mb-1 px-1">Why remove this?</p>
+    <div className="absolute z-10 top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-sm p-1.5 min-w-[140px]">
+      <p className="text-xs text-gray-400 mb-1 px-2 pt-0.5">Why remove this?</p>
       {reasons.map(r => (
         <button
           key={r}
           onClick={() => { onConfirm(r); setOpen(false) }}
-          className="block w-full text-left text-xs px-2 py-1 hover:bg-gray-50 rounded text-gray-600"
+          className="block w-full text-left text-xs px-2 py-1.5 hover:bg-gray-50 rounded text-gray-600 transition-colors"
         >{r}</button>
       ))}
-      <button onClick={() => setOpen(false)} className="block w-full text-left text-xs px-2 py-1 text-gray-300 hover:text-gray-500">Cancel</button>
+      <button
+        onClick={() => setOpen(false)}
+        className="block w-full text-left text-xs px-2 py-1.5 text-gray-300 hover:text-gray-500 transition-colors"
+      >Cancel</button>
     </div>
   )
 }

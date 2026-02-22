@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
-import { open } from 'open'
+import open from 'open'
+import { learnFromDeletions } from './preference'
 
 const app = express()
 const PORT = 3001
@@ -60,6 +61,10 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
   session.result = req.body
 
   console.log(`[openclaw-ui] Session ${session.id} completed:`, JSON.stringify(req.body, null, 2))
+
+  // Learn from delete actions and persist rules to MEMORY.md
+  const actions = (req.body.actions ?? []) as Array<{ type: string; paragraphId: string; reason?: string; instruction?: string }>
+  learnFromDeletions(actions, session.payload as Record<string, unknown>)
 
   // Send result back to OpenClaw
   if (session.sessionKey) {
