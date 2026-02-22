@@ -21,6 +21,20 @@ interface Action {
 
 type ParagraphState = 'normal' | 'deleted' | 'rewriting'
 
+// Keys must match REASON_LABELS in preference.ts
+const REASONS = [
+  { key: 'too_formal',  label: 'Too formal' },
+  { key: 'too_casual',  label: 'Too casual' },
+  { key: 'too_long',    label: 'Too long' },
+  { key: 'wrong_tone',  label: 'Wrong tone' },
+  { key: 'off_topic',   label: 'Off topic' },
+  { key: 'redundant',   label: 'Redundant' },
+]
+
+function reasonLabel(key: string): string {
+  return REASONS.find(r => r.key === key)?.label ?? key
+}
+
 export default function ReviewPage() {
   const { id } = useParams<{ id: string }>()
   const [payload, setPayload] = useState<EmailPayload | null>(null)
@@ -39,9 +53,9 @@ export default function ReviewPage() {
       })
   }, [id])
 
-  const deleteParagraph = (pid: string, reason: string) => {
+  const deleteParagraph = (pid: string, reasonKey: string) => {
     setStates(s => ({ ...s, [pid]: 'deleted' }))
-    setActions(a => [...a.filter(x => x.paragraphId !== pid), { type: 'delete', paragraphId: pid, reason }])
+    setActions(a => [...a.filter(x => x.paragraphId !== pid), { type: 'delete', paragraphId: pid, reason: reasonKey }])
   }
 
   const startRewrite = (pid: string) => {
@@ -107,11 +121,24 @@ export default function ReviewPage() {
         <div className="space-y-3 mb-8">
           {payload.paragraphs.map(p => {
             const state = states[p.id] || 'normal'
+            const action = actions.find(a => a.paragraphId === p.id)
 
             if (state === 'deleted') return (
-              <div key={p.id} className="flex items-center gap-3 p-3 bg-red-50 border border-red-100 rounded-lg opacity-60">
-                <span className="text-sm text-red-400 line-through flex-1">{p.content}</span>
-                <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 hover:text-gray-600">undo</button>
+              <div key={p.id} className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-red-400 line-through leading-relaxed">{p.content}</span>
+                  {action?.reason && (
+                    <span className="ml-2 inline-block text-xs text-red-300 bg-red-100 px-1.5 py-0.5 rounded">
+                      {reasonLabel(action.reason)}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => undoParagraph(p.id)}
+                  className="text-xs text-gray-400 hover:text-gray-600 shrink-0 transition-colors"
+                >
+                  undo
+                </button>
               </div>
             )
 
@@ -125,8 +152,8 @@ export default function ReviewPage() {
                   onChange={e => setRewriteInput(r => ({ ...r, [p.id]: e.target.value }))}
                 />
                 <div className="flex gap-2">
-                  <button onClick={() => confirmRewrite(p.id)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Confirm</button>
-                  <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                  <button onClick={() => confirmRewrite(p.id)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors">Confirm</button>
+                  <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
                 </div>
               </div>
             )
@@ -137,10 +164,11 @@ export default function ReviewPage() {
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                   <button
                     onClick={() => startRewrite(p.id)}
-                    title="Rewrite"
                     className="text-xs text-gray-300 hover:text-blue-500 px-1.5 py-1 rounded hover:bg-blue-50 transition-colors"
-                  >Rewrite</button>
-                  <DeleteButton onConfirm={(reason) => deleteParagraph(p.id, reason)} />
+                  >
+                    Rewrite
+                  </button>
+                  <DeleteButton onConfirm={(reasonKey) => deleteParagraph(p.id, reasonKey)} />
                 </div>
               </div>
             )
@@ -174,32 +202,38 @@ export default function ReviewPage() {
   )
 }
 
-function DeleteButton({ onConfirm }: { onConfirm: (reason: string) => void }) {
+function DeleteButton({ onConfirm }: { onConfirm: (reasonKey: string) => void }) {
   const [open, setOpen] = useState(false)
-  const reasons = ['Too formal', 'Too casual', 'Irrelevant', 'Wrong tone', 'Other']
 
   if (!open) return (
     <button
       onClick={() => setOpen(true)}
-      title="Delete"
       className="text-xs text-gray-300 hover:text-red-400 px-1.5 py-1 rounded hover:bg-red-50 transition-colors"
-    >Delete</button>
+    >
+      Delete
+    </button>
   )
 
   return (
-    <div className="absolute z-10 top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-sm p-1.5 min-w-[140px]">
+    <div className="absolute z-10 top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-sm p-1.5 min-w-[148px]">
       <p className="text-xs text-gray-400 mb-1 px-2 pt-0.5">Why remove this?</p>
-      {reasons.map(r => (
+      {REASONS.map(r => (
         <button
-          key={r}
-          onClick={() => { onConfirm(r); setOpen(false) }}
+          key={r.key}
+          onClick={() => { onConfirm(r.key); setOpen(false) }}
           className="block w-full text-left text-xs px-2 py-1.5 hover:bg-gray-50 rounded text-gray-600 transition-colors"
-        >{r}</button>
+        >
+          {r.label}
+        </button>
       ))}
-      <button
-        onClick={() => setOpen(false)}
-        className="block w-full text-left text-xs px-2 py-1.5 text-gray-300 hover:text-gray-500 transition-colors"
-      >Cancel</button>
+      <div className="border-t border-gray-100 mt-1 pt-1">
+        <button
+          onClick={() => setOpen(false)}
+          className="block w-full text-left text-xs px-2 py-1.5 text-gray-300 hover:text-gray-500 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }
