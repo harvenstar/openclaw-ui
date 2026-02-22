@@ -10,6 +10,12 @@ interface SessionItem {
   to?: string
 }
 
+function sessionPath(s: SessionItem): string {
+  if (s.type === 'action_approval') return `/approval/${s.id}`
+  if (s.type === 'code_review') return `/code-review/${s.id}`
+  return `/review/${s.id}`
+}
+
 function formatTime(ts: number): string {
   const d = new Date(ts)
   const now = Date.now()
@@ -58,7 +64,7 @@ export default function HomePage() {
             {sessions.map(s => (
               <Link
                 key={s.id}
-                to={`/review/${s.id}`}
+                to={sessionPath(s)}
                 className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-lg hover:border-gray-200 transition-colors"
               >
                 <div className="min-w-0">

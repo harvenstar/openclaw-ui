@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 interface Paragraph {
@@ -42,7 +42,10 @@ export default function ReviewPage() {
   const [states, setStates] = useState<Record<string, ParagraphState>>({})
   const [rewriteInput, setRewriteInput] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [callbackFailed, setCallbackFailed] = useState(false)
 
   useEffect(() => {
     fetch(`http://localhost:3001/api/sessions/${id}`)
@@ -51,6 +54,7 @@ export default function ReviewPage() {
         setPayload(data.payload as EmailPayload)
         setLoading(false)
       })
+      .catch(() => { setError(true); setLoading(false) })
   }, [id])
 
   const deleteParagraph = (pid: string, reasonKey: string) => {
@@ -75,13 +79,21 @@ export default function ReviewPage() {
   }
 
   const submit = async (confirmed: boolean) => {
-    await fetch(`http://localhost:3001/api/sessions/${id}/complete`, {
+    setSubmitting(true)
+    const result = await fetch(`http://localhost:3001/api/sessions/${id}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ actions, confirmed, regenerate: !confirmed })
-    })
+    }).then(r => r.json())
+    if (result.callbackFailed) setCallbackFailed(true)
     setSubmitted(true)
   }
+
+  if (error) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-red-400 text-sm">Server not reachable — is openclaw-ui running?</p>
+    </div>
+  )
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -99,6 +111,9 @@ export default function ReviewPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
         <p className="text-gray-700 font-medium">Done. Your agent is continuing.</p>
+        {callbackFailed && (
+          <p className="text-amber-500 text-xs mt-2">Note: agent may not have received the callback.</p>
+        )}
         <p className="text-gray-400 text-sm mt-1">You can close this tab.</p>
       </div>
     </div>
@@ -186,13 +201,15 @@ export default function ReviewPage() {
         <div className="flex gap-3">
           <button
             onClick={() => submit(true)}
-            className="flex-1 bg-gray-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-gray-700 transition-colors"
+            disabled={submitting}
+            className={`flex-1 bg-gray-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-gray-700 transition-colors ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             Confirm & Send
           </button>
           <button
             onClick={() => submit(false)}
-            className="px-4 text-sm text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            disabled={submitting}
+            className={`px-4 text-sm text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             Regenerate
           </button>
@@ -204,6 +221,18 @@ export default function ReviewPage() {
 
 function DeleteButton({ onConfirm }: { onConfirm: (reasonKey: string) => void }) {
   const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
 
   if (!open) return (
     <button
@@ -215,7 +244,7 @@ function DeleteButton({ onConfirm }: { onConfirm: (reasonKey: string) => void })
   )
 
   return (
-    <div className="absolute z-10 top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-sm p-1.5 min-w-[148px]">
+    <div ref={ref} className="absolute z-10 top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-sm p-1.5 min-w-[148px]">
       <p className="text-xs text-gray-400 mb-1 px-2 pt-0.5">Why remove this?</p>
       {REASONS.map(r => (
         <button

@@ -35,7 +35,11 @@ app.post('/api/review', async (req, res) => {
     createdAt: Date.now()
   }
 
-  const path = type === 'action_approval' ? 'approval' : 'review'
+  const routeMap: Record<string, string> = {
+    action_approval: 'approval',
+    code_review: 'code-review',
+  }
+  const path = routeMap[type] ?? 'review'
   const url = `http://localhost:5173/${path}/${id}`
   console.log(`[openclaw-ui] Review session created: ${id}`)
   console.log(`[openclaw-ui] Opening browser: ${url}`)
@@ -87,6 +91,9 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
   learnFromDeletions(actions, session.payload as Record<string, unknown>)
 
   // Send result back to OpenClaw
+  let callbackFailed = false
+  let callbackError = ''
+
   if (session.sessionKey) {
     try {
       const summary = buildActionSummary(req.body)
@@ -104,19 +111,21 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
       })
       console.log(`[openclaw-ui] Callback sent to OpenClaw`)
     } catch (err) {
+      callbackFailed = true
+      callbackError = String(err)
       console.error(`[openclaw-ui] Failed to callback OpenClaw:`, err)
     }
   }
 
-  res.json({ ok: true })
+  res.json({ ok: true, callbackFailed, callbackError })
 })
 
 function buildActionSummary(result: Record<string, unknown>): string {
-  // If result has approved field, it's an action_approval
+  // If result has approved field, it's an action_approval or code_review
   if ('approved' in result) {
     const approved = result.approved as boolean
     const note = result.note as string | undefined
-    const lines = ['[openclaw-ui] User reviewed the action:']
+    const lines = ['[openclaw-ui] User reviewed the request:']
     lines.push(approved ? '- Approved: proceed.' : '- Rejected: do not proceed.')
     if (note) lines.push(`- Note: ${note}`)
     return lines.join('\n')
