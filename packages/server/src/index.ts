@@ -35,7 +35,8 @@ app.post('/api/review', async (req, res) => {
     createdAt: Date.now()
   }
 
-  const url = `http://localhost:5173/review/${id}`
+  const path = type === 'action_approval' ? 'approval' : 'review'
+  const url = `http://localhost:5173/${path}/${id}`
   console.log(`[openclaw-ui] Review session created: ${id}`)
   console.log(`[openclaw-ui] Opening browser: ${url}`)
 
@@ -111,6 +112,16 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
 })
 
 function buildActionSummary(result: Record<string, unknown>): string {
+  // If result has approved field, it's an action_approval
+  if ('approved' in result) {
+    const approved = result.approved as boolean
+    const note = result.note as string | undefined
+    const lines = ['[openclaw-ui] User reviewed the action:']
+    lines.push(approved ? '- Approved: proceed.' : '- Rejected: do not proceed.')
+    if (note) lines.push(`- Note: ${note}`)
+    return lines.join('\n')
+  }
+
   const actions = result.actions as Array<{ type: string; paragraphId: string; reason?: string; instruction?: string }> || []
   const lines = ['[openclaw-ui] User reviewed the draft:']
 
