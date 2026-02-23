@@ -5,8 +5,8 @@ import { learnFromDeletions } from './preference.js'
 import { createSession, getSession, listSessions, completeSession } from './store.js'
 
 const app = express()
-const PORT = 3001
-const OPENCLAW_WEBHOOK = 'http://localhost:18789/hooks/agent'
+const PORT = Number(process.env.PORT || 3001)
+const OPENCLAW_WEBHOOK = process.env.OPENCLAW_WEBHOOK || 'http://localhost:18789/hooks/agent'
 
 app.use(cors())
 app.use(express.json())
