@@ -206,6 +206,11 @@ function buildActionSummary(result: Record<string, unknown>): string {
     lines.push('- User requested full regeneration.')
   }
 
+  const intents = (result.selectedIntents ?? []) as Array<{ id: string; accepted: boolean }>
+  if (intents.length > 0) {
+    lines.push(`- Intent decisions: ${intents.map(i => `${i.id} → ${i.accepted ? 'accepted' : 'rejected'}`).join(', ')}`)
+  }
+
   return lines.join('\n')
 }
 

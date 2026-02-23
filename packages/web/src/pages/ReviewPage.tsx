@@ -26,6 +26,11 @@ interface CcSuggestion {
   email: string
 }
 
+interface IntentSuggestion {
+  id: string
+  text: string
+}
+
 interface InboxPayload {
   inbox: EmailItem[]
   draft: {
@@ -34,6 +39,7 @@ interface InboxPayload {
     subject: string
     paragraphs: Paragraph[]
     ccSuggestions?: CcSuggestion[]
+    intentSuggestions?: IntentSuggestion[]
   }
 }
 
@@ -99,10 +105,10 @@ export default function ReviewPage() {
 
   // Format B state
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null)
-  const [rightView, setRightView] = useState<'draft' | 'summary' | 'empty'>('empty')
+  const [rightView, setRightView] = useState<'draft' | 'summary' | 'email' | 'empty'>('empty')
   const [markedAsRead, setMarkedAsRead] = useState<string[]>([])
   const [userIntention, setUserIntention] = useState('')
-  const [selectedCcEmails, setSelectedCcEmails] = useState<string[]>([])
+  const [selectedIntents, setSelectedIntents] = useState<Record<string, boolean>>({})
   const [summaryEmail, setSummaryEmail] = useState<EmailItem | null>(null)
   const [summaryData, setSummaryData] = useState<SummaryResponse | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
@@ -151,6 +157,11 @@ export default function ReviewPage() {
     setActions(a => a.filter(x => x.paragraphId !== pid))
   }
 
+  const handleViewEmail = (email: EmailItem) => {
+    setSelectedEmailId(email.id)
+    setRightView('email')
+  }
+
   const handleReply = (email: EmailItem) => {
     setSelectedEmailId(email.id)
     setRightView('draft')
@@ -188,8 +199,7 @@ export default function ReviewPage() {
   const submit = async (confirmed: boolean) => {
     setSubmitting(true)
     const hasInbox = payload && 'inbox' in payload && Array.isArray((payload as InboxPayload).inbox)
-    const ccSuggestions = hasInbox ? ((payload as InboxPayload).draft.ccSuggestions ?? []) : []
-    const selectedCcSuggestions = ccSuggestions.filter(s => selectedCcEmails.includes(s.email))
+    const selectedIntentsList = Object.entries(selectedIntents).map(([intentId, accepted]) => ({ id: intentId, accepted }))
     const body = hasInbox
       ? JSON.stringify({
           actions,
@@ -197,7 +207,7 @@ export default function ReviewPage() {
           regenerate: !confirmed,
           markedAsRead,
           userIntention,
-          selectedCcSuggestions,
+          selectedIntents: selectedIntentsList,
         })
       : JSON.stringify({ actions, confirmed, regenerate: !confirmed })
     const result = await fetch(`http://localhost:3001/api/sessions/${id}/complete`, {
@@ -246,14 +256,16 @@ export default function ReviewPage() {
     const inboxPayload = payload as InboxPayload
     const visibleEmails = inboxPayload.inbox.filter(e => !markedAsRead.includes(e.id)).slice(0, 10)
     const hasActions = actions.length > 0
-    const ccSuggestions = inboxPayload.draft.ccSuggestions ?? []
+    const intentSuggestions = inboxPayload.draft.intentSuggestions ?? []
 
-    const toggleCcSuggestion = (email: string) => {
-      setSelectedCcEmails(current =>
-        current.includes(email)
-          ? current.filter(x => x !== email)
-          : [...current, email]
-      )
+    const toggleIntent = (intentId: string, value: boolean) => {
+      setSelectedIntents(current => {
+        if (current[intentId] === value) {
+          const { [intentId]: _, ...rest } = current
+          return rest
+        }
+        return { ...current, [intentId]: value }
+      })
     }
 
     const renderParagraphs = (paragraphs: Paragraph[]) =>
@@ -329,7 +341,7 @@ export default function ReviewPage() {
                       ? 'bg-zinc-50 border-l-2 border-l-blue-500'
                       : 'hover:bg-gray-50'
                   }`}
-                  onClick={() => handleReply(email)}
+                  onClick={() => handleViewEmail(email)}
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${categoryBadge(email.category)}`}>
@@ -337,7 +349,7 @@ export default function ReviewPage() {
                     </span>
                     <span className="text-sm font-medium text-zinc-800 truncate flex-1 min-w-0">{email.from}</span>
                     {/* Hover actions — inline so from text truncates around them */}
-                    <div className="hidden group-hover:flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={e => { e.stopPropagation(); handleReply(email) }}
                         className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
@@ -346,13 +358,13 @@ export default function ReviewPage() {
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); handleMarkAsRead(email.id) }}
-                        className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                        className="text-xs text-zinc-300 hover:text-zinc-600 transition-colors"
                       >
                         Read
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); handleSummary(email) }}
-                        className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                        className="text-xs text-zinc-300 hover:text-zinc-600 transition-colors"
                       >
                         Summary
                       </button>
@@ -374,7 +386,7 @@ export default function ReviewPage() {
             {/* View: empty */}
             {rightView === 'empty' && (
               <div className="flex items-center justify-center h-64">
-                <p className="text-sm text-zinc-400">Select an email to review the draft.</p>
+                <p className="text-sm text-zinc-400">Select an email to read.</p>
               </div>
             )}
 
@@ -383,7 +395,7 @@ export default function ReviewPage() {
               <div>
                 <div className="flex items-center gap-2 mb-6">
                   <button
-                    onClick={() => setRightView(selectedEmailId ? 'draft' : 'empty')}
+                    onClick={() => setRightView(selectedEmailId ? 'email' : 'empty')}
                     className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors"
                   >
                     Back
@@ -425,6 +437,45 @@ export default function ReviewPage() {
               </div>
             )}
 
+            {/* View: email */}
+            {rightView === 'email' && selectedEmailId && (() => {
+              const email = inboxPayload.inbox.find(e => e.id === selectedEmailId)
+              if (!email) return null
+              return (
+                <div>
+                  <div className="flex items-center gap-2 mb-6">
+                    <button
+                      onClick={() => { setSelectedEmailId(null); setRightView('empty') }}
+                      className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors"
+                    >
+                      Back
+                    </button>
+                    <span className="text-zinc-300">/</span>
+                    <span className="text-sm text-zinc-600 font-medium">Email</span>
+                  </div>
+                  <div className="border-t border-gray-100 pt-6">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${categoryBadge(email.category)}`}>
+                        {email.category}
+                      </span>
+                      <span className="text-xs text-zinc-400">{formatTimestamp(email.timestamp)}</span>
+                    </div>
+                    <h2 className="text-base font-medium text-zinc-800 mb-1">{email.subject}</h2>
+                    <p className="text-xs text-zinc-500 mb-6">From: {email.from}</p>
+                    <div className="p-4 bg-white border border-gray-100 rounded-lg mb-6">
+                      <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">{email.preview}</p>
+                    </div>
+                    <button
+                      onClick={() => handleReply(email)}
+                      className="bg-blue-500 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      Reply
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* View: draft */}
             {rightView === 'draft' && (
               <div>
@@ -459,38 +510,53 @@ export default function ReviewPage() {
                   />
                 </div>
 
-                {/* CC Suggestions */}
-                <div className="mb-6">
-                  <label className="block text-xs text-zinc-500 mb-2">CC Suggestions</label>
-                  {ccSuggestions.length === 0 ? (
-                    <p className="text-xs text-zinc-400 border border-gray-100 rounded-lg px-3 py-2">No CC suggestions</p>
-                  ) : (
+                {/* Intent Suggestions */}
+                {intentSuggestions.length > 0 && (
+                  <div className="mb-6">
+                    <label className="block text-xs text-zinc-500 mb-2">Intent Suggestions</label>
                     <div className="space-y-2">
-                      {ccSuggestions.map(suggestion => {
-                        const checked = selectedCcEmails.includes(suggestion.email)
+                      {intentSuggestions.map(suggestion => {
+                        const selection = selectedIntents[suggestion.id]
                         return (
-                          <label
-                            key={suggestion.email}
-                            className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                              checked ? 'border-blue-200 bg-blue-50' : 'border-gray-100 hover:border-gray-200 bg-white'
+                          <div
+                            key={suggestion.id}
+                            className={`flex items-center gap-3 p-3 border rounded-lg transition-colors ${
+                              selection === true
+                                ? 'border-green-200 bg-green-50'
+                                : selection === false
+                                  ? 'border-red-100 bg-red-50/50'
+                                  : 'border-gray-100 bg-white'
                             }`}
                           >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleCcSuggestion(suggestion.email)}
-                              className="h-4 w-4 rounded border-gray-300 text-blue-500 focus:ring-blue-300"
-                            />
-                            <div className="min-w-0">
-                              <p className="text-sm text-zinc-700 truncate">{suggestion.name}</p>
-                              <p className="text-xs text-zinc-400 truncate">{suggestion.email}</p>
+                            <p className="text-sm text-zinc-700 flex-1">{suggestion.text}</p>
+                            <div className="flex gap-1.5 shrink-0">
+                              <button
+                                onClick={() => toggleIntent(suggestion.id, true)}
+                                className={`text-xs px-2.5 py-1 rounded transition-colors ${
+                                  selection === true
+                                    ? 'bg-green-500 text-white'
+                                    : 'text-zinc-400 hover:text-green-600 border border-gray-200 hover:border-green-300'
+                                }`}
+                              >
+                                Yes
+                              </button>
+                              <button
+                                onClick={() => toggleIntent(suggestion.id, false)}
+                                className={`text-xs px-2.5 py-1 rounded transition-colors ${
+                                  selection === false
+                                    ? 'bg-red-400 text-white'
+                                    : 'text-zinc-400 hover:text-red-400 border border-gray-200 hover:border-red-200'
+                                }`}
+                              >
+                                No
+                              </button>
                             </div>
-                          </label>
+                          </div>
                         )
                       })}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Footer buttons */}
                 <div className="flex gap-3">
