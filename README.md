@@ -4,9 +4,9 @@
 
 AgentClick is the product name. `openclaw-ui` is the current repo / package naming used in this codebase.
 
-[![GitHub stars](https://img.shields.io/github/stars/harvenstar/openclaw-ui?style=flat-square)](https://github.com/harvenstar/openclaw-ui/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/agentlayer-io/AgentClick?style=flat-square)](https://github.com/agentlayer-io/AgentClick/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/harvenstar/openclaw-ui/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/agentlayer-io/AgentClick/pulls)
 
 ---
 
@@ -56,8 +56,8 @@ Implemented:
 ## Quick Start
 
 ```bash
-git clone https://github.com/harvenstar/openclaw-ui.git
-cd openclaw-ui
+git clone https://github.com/agentlayer-io/AgentClick.git
+cd AgentClick
 npm install
 npm run dev        # starts on localhost:3001
 ```
@@ -82,7 +82,7 @@ Restart OpenClaw. Ask it to write an email — the review page will open automat
 ## Project Structure
 
 ```
-openclaw-ui/
+AgentClick/
 ├── packages/
 │   ├── server/          # Node.js + Express — receives agent data, handles callbacks
 │   └── web/             # React + Vite + Tailwind — the interaction UI
