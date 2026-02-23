@@ -269,35 +269,35 @@ export default function ReviewPage() {
                   onClick={() => handleReply(email)}
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${categoryBadge(email.category)}`}>
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${categoryBadge(email.category)}`}>
                       {email.category}
                     </span>
-                    <span className="text-sm font-medium text-zinc-800 truncate flex-1">{email.from}</span>
+                    <span className="text-sm font-medium text-zinc-800 truncate flex-1 min-w-0">{email.from}</span>
+                    {/* Hover actions — inline so from text truncates around them */}
+                    <div className="hidden group-hover:flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={e => { e.stopPropagation(); handleReply(email) }}
+                        className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
+                      >
+                        Reply
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); handleMarkAsRead(email.id) }}
+                        className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                      >
+                        Read
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); handleSummary(email) }}
+                        className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                      >
+                        Summary
+                      </button>
+                    </div>
                   </div>
                   <p className="text-xs text-zinc-500 truncate mb-0.5">{email.subject}</p>
                   <p className="text-xs text-zinc-400 line-clamp-2">{email.preview}</p>
                   <p className="text-xs text-zinc-300 mt-1">{formatTimestamp(email.timestamp)}</p>
-                  {/* Hover actions */}
-                  <div className="absolute top-3 right-3 hidden group-hover:flex gap-2">
-                    <button
-                      onClick={e => { e.stopPropagation(); handleReply(email) }}
-                      className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
-                    >
-                      Reply
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); handleMarkAsRead(email.id) }}
-                      className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      Read
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); handleSummary(email) }}
-                      className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      Summary
-                    </button>
-                  </div>
                 </div>
               )
             })
