@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers the current production-style deployment shape for AgentClick (`openclaw-ui` codebase).
+This guide covers the current production-style deployment shape for AgentClick (`agentclick` codebase).
 
 ## Runtime Model
 

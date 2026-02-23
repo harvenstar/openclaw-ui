@@ -25,7 +25,7 @@ app.post('/api/review', async (req, res) => {
   const { type, sessionKey, payload } = req.body
 
   if (!sessionKey) {
-    console.warn('[openclaw-ui] Warning: sessionKey missing — callback will be skipped')
+    console.warn('[agentclick] Warning: sessionKey missing — callback will be skipped')
   }
 
   const id = `session_${Date.now()}`
@@ -44,13 +44,13 @@ app.post('/api/review', async (req, res) => {
   }
   const path = routeMap[type] ?? 'review'
   const url = `${WEB_ORIGIN}/${path}/${id}`
-  console.log(`[openclaw-ui] Review session created: ${id}`)
-  console.log(`[openclaw-ui] Opening browser: ${url}`)
+  console.log(`[agentclick] Review session created: ${id}`)
+  console.log(`[agentclick] Opening browser: ${url}`)
 
   try {
     await open(url)
   } catch (err) {
-    console.warn('[openclaw-ui] Failed to open browser:', err)
+    console.warn('[agentclick] Failed to open browser:', err)
   }
 
   res.json({ sessionId: id, url })
@@ -106,7 +106,7 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
 
   completeSession(req.params.id, req.body)
 
-  console.log(`[openclaw-ui] Session ${session.id} completed:`, JSON.stringify(req.body, null, 2))
+  console.log(`[agentclick] Session ${session.id} completed:`, JSON.stringify(req.body, null, 2))
 
   // Learn from delete actions and persist rules to MEMORY.md
   const actions = (req.body.actions ?? []) as Array<{ type: string; paragraphId: string; reason?: string; instruction?: string }>
@@ -131,11 +131,11 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
           deliver: true
         })
       })
-      console.log(`[openclaw-ui] Callback sent to OpenClaw`)
+      console.log(`[agentclick] Callback sent to OpenClaw`)
     } catch (err) {
       callbackFailed = true
       callbackError = String(err)
-      console.error(`[openclaw-ui] Failed to callback OpenClaw:`, err)
+      console.error(`[agentclick] Failed to callback OpenClaw:`, err)
     }
   }
 
@@ -147,14 +147,14 @@ function buildActionSummary(result: Record<string, unknown>): string {
   if ('approved' in result) {
     const approved = result.approved as boolean
     const note = result.note as string | undefined
-    const lines = ['[openclaw-ui] User reviewed the request:']
+    const lines = ['[agentclick] User reviewed the request:']
     lines.push(approved ? '- Approved: proceed.' : '- Rejected: do not proceed.')
     if (note) lines.push(`- Note: ${note}`)
     return lines.join('\n')
   }
 
   const actions = result.actions as Array<{ type: string; paragraphId: string; reason?: string; instruction?: string }> || []
-  const lines = ['[openclaw-ui] User reviewed the draft:']
+  const lines = ['[agentclick] User reviewed the draft:']
 
   const deleted = actions.filter(a => a.type === 'delete')
   const rewritten = actions.filter(a => a.type === 'rewrite')
@@ -181,9 +181,9 @@ if (SHOULD_SERVE_BUILT_WEB) {
     if (req.path.startsWith('/api/')) return next()
     res.sendFile(join(WEB_DIST_DIR, 'index.html'))
   })
-  console.log(`[openclaw-ui] Serving web UI from ${WEB_DIST_DIR}`)
+  console.log(`[agentclick] Serving web UI from ${WEB_DIST_DIR}`)
 }
 
 app.listen(PORT, () => {
-  console.log(`[openclaw-ui] Server running at http://localhost:${PORT}`)
+  console.log(`[agentclick] Server running at http://localhost:${PORT}`)
 })

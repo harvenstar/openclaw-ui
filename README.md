@@ -1,8 +1,6 @@
-# AgentClick (openclaw-ui)
+# AgentClick
 
 **Rich web UI for AI agent interactions — click to edit, human-in-the-loop, preference learning.**
-
-AgentClick is the product name. `openclaw-ui` is the current repo / package naming used in this codebase.
 
 [![GitHub stars](https://img.shields.io/github/stars/agentlayer-io/AgentClick?style=flat-square)](https://github.com/agentlayer-io/AgentClick/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -115,7 +113,7 @@ AgentClick/
 - [x] **M2 (partial)** — Agent integration loop (`/review` create session + `/wait` long-poll + callback)
 - [x] **Next** — Unified serving (single port; no separate Vite port in production)
 - [x] **Next** — Production serve polish (deployment docs / environment examples)
-- [ ] **Next** — npm global package (`openclaw-ui`)
+- [ ] **Next** — npm global package (`agentclick`)
 - [ ] **Next** — Remote mode UX + link delivery polish
 - [ ] **Later** — Agent task visualization (Mission Control view)
 - [ ] **Later** — Multi-framework support (beyond OpenClaw)
@@ -124,7 +122,7 @@ AgentClick/
 
 ## Why Not ClawX?
 
-[ClawX](https://github.com/ValueCell-ai/ClawX) is a desktop app for *managing* OpenClaw (installing skills, configuring channels, running the gateway). openclaw-ui is for *working with* your agent — reviewing its output, making decisions, teaching it your preferences. They're complementary.
+[ClawX](https://github.com/ValueCell-ai/ClawX) is a desktop app for *managing* OpenClaw (installing skills, configuring channels, running the gateway). AgentClick is for *working with* your agent — reviewing its output, making decisions, teaching it your preferences. They're complementary.
 
 ---
 

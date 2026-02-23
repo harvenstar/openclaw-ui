@@ -73,7 +73,7 @@ export default function HomePage() {
       <div className="max-w-2xl mx-auto py-10 px-4">
 
         <div className="mb-6">
-          <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">openclaw-ui</p>
+          <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">agentclick</p>
           <h1 className="text-xl font-semibold text-zinc-900">Recent Sessions</h1>
         </div>
 

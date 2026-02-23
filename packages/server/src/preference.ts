@@ -97,5 +97,5 @@ export function learnFromDeletions(
     : `${rules.join('\n')}\n`
 
   fs.appendFileSync(MEMORY_PATH, block, 'utf-8')
-  console.log(`[openclaw-ui] Learned ${rules.length} preference rule(s) -> ${MEMORY_PATH}`)
+  console.log(`[agentclick] Learned ${rules.length} preference rule(s) -> ${MEMORY_PATH}`)
 }

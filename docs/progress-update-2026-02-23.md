@@ -1,6 +1,6 @@
 # Progress Update (2026-02-23)
 
-This document summarizes the recent engineering cleanup work completed on `AgentClick` (`openclaw-ui` codebase), how it was verified, and what should be done next.
+This document summarizes the recent engineering cleanup work completed on `AgentClick` (`agentclick` codebase), how it was verified, and what should be done next.
 
 ## Scope of This Update
 
@@ -39,7 +39,7 @@ Problem:
 Changes:
 - Updated README to reflect current implemented features (review flows, SQLite persistence, long-polling, preference learning, etc.)
 - Updated roadmap items to reflect completed and next-stage work
-- Added a brand naming note: `AgentClick` (product name) vs `openclaw-ui` (current repo/package naming)
+- Added a brand naming note: `AgentClick` (product name) vs previous repo/package naming
 
 Relevant commits:
 - `63cf283` `docs: update readme for current project status`
@@ -52,7 +52,7 @@ Problem:
 Changes:
 - Updated GitHub links to `agentlayer-io/AgentClick`
 - Updated `git clone` and `cd` examples
-- Updated project tree root label from `openclaw-ui/` to `AgentClick/`
+- Updated project tree root label from the previous repo folder name to `AgentClick/`
 
 Relevant commits:
 - `5efd0bf` `docs: update repo links and clone path`
@@ -116,8 +116,8 @@ npm run build
 ```
 
 Observed result (summary):
-- `@openclaw-ui/server`: `tsc` completed successfully
-- `@openclaw-ui/web`: `tsc && vite build` completed successfully
+- `@agentclick/server`: `tsc` completed successfully
+- `@agentclick/web`: `tsc && vite build` completed successfully
 
 ### API Verification (Session Creation)
 
@@ -202,11 +202,11 @@ Suggested scope:
 ### 3. Naming migration decision (plan first, execute later)
 
 Why:
-- Brand (`AgentClick`) and package names (`openclaw-ui`) still intentionally coexist
+- Brand/package naming was previously split (`AgentClick` brand vs older package names)
 - This is acceptable short-term, but should be resolved before npm release
 
 Decision to make:
-- Keep package names as `@openclaw-ui/*` and use `AgentClick` as product brand only
+- (Historical option) Keep package names as `@agentclick/*` or separate package naming from product brand
 - Or migrate package names to `@agentclick/*`
 
 Recommended approach:

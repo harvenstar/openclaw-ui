@@ -126,7 +126,7 @@ Read `docs/dev-rules.md` before writing any code. Key rules:
 - Deployment guide (`docs/deployment.md`) for single-port runtime, env vars, reverse proxy, and Docker/OpenClaw notes
 
 **Pending:**
-- npm global package (`openclaw-ui` on npm)
+- npm global package (`agentclick` on npm)
 - CC suggestions as checkboxes (currently free-text input; agent can pass `ccSuggestions[]`)
 
 ---
