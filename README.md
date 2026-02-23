@@ -59,7 +59,7 @@ Implemented:
 git clone https://github.com/agentlayer-io/AgentClick.git
 cd AgentClick
 npm install
-npm run dev        # starts on localhost:3001
+npm run dev        # dev mode: API on 3001, Vite UI on 5173
 ```
 
 Optional server config (defaults shown in `.env.example`):
@@ -70,6 +70,13 @@ OPENCLAW_WEBHOOK=http://localhost:18789/hooks/agent
 ```
 
 Create a local `.env` in the project root to override these values during development (server auto-loads it via `dotenv`).
+
+Production-style local run (single port after build):
+
+```bash
+npm run build
+npm start          # serves API + built web UI on localhost:3001
+```
 
 Copy the skill to your OpenClaw workspace:
 
@@ -102,7 +109,8 @@ AgentClick/
 - [x] **M0** — Email draft review (click to delete/rewrite paragraphs)
 - [x] **M1** — Preference learning (auto-save rules to MEMORY.md)
 - [x] **M2 (partial)** — Agent integration loop (`/review` create session + `/wait` long-poll + callback)
-- [ ] **Next** — Unified serving (single port; no separate Vite port in production)
+- [x] **Next** — Unified serving (single port; no separate Vite port in production)
+- [ ] **Next** — Production serve polish (deployment docs / environment examples)
 - [ ] **Next** — npm global package (`openclaw-ui`)
 - [ ] **Next** — Remote mode UX + link delivery polish
 - [ ] **Later** — Agent task visualization (Mission Control view)

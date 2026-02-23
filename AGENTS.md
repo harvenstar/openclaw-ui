@@ -18,6 +18,14 @@ npm run dev
 
 The server auto-loads root `.env` via `dotenv` for `PORT` and `OPENCLAW_WEBHOOK` overrides.
 
+Production-style local run (single port):
+
+```bash
+npm run build
+npm start
+# API + UI: http://localhost:3001
+```
+
 To test without a live agent, POST a mock session:
 
 ```bash
@@ -112,9 +120,9 @@ Read `docs/dev-rules.md` before writing any code. Key rules:
 - End-to-end tested with OpenClaw (Docker) via Feishu — full loop verified
 
 **Pending:**
-- Express unified serving (eliminate 3001/5173 dual port — needed before npm publish)
 - npm global package (`openclaw-ui` on npm)
 - CC suggestions as checkboxes (currently free-text input; agent can pass `ccSuggestions[]`)
+- Production serving docs polish (deployment examples / reverse proxy notes)
 
 ---
 
@@ -122,3 +130,4 @@ Read `docs/dev-rules.md` before writing any code. Key rules:
 
 - 2026-02-23 (local): Verified API session creation for `email_review`, `action_approval`, and `code_review` via `scripts/demo.sh`.
 - 2026-02-23 (local): Verified `create -> GET session (pending) -> complete -> /wait (completed)` flow on `action_approval`.
+- 2026-02-23 (local): Verified single-port production mode (`npm run build && PORT=3101 npm start`) serves `/`, SPA fallback routes, `/api/*`, and returns single-port review URLs.

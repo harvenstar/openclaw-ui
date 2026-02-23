@@ -2,12 +2,20 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import open from 'open'
+import { existsSync } from 'fs'
+import { dirname, join } from 'path'
+import { fileURLToPath } from 'url'
 import { learnFromDeletions } from './preference.js'
 import { createSession, getSession, listSessions, completeSession } from './store.js'
 
 const app = express()
 const PORT = Number(process.env.PORT || 3001)
 const OPENCLAW_WEBHOOK = process.env.OPENCLAW_WEBHOOK || 'http://localhost:18789/hooks/agent'
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const WEB_DIST_DIR = join(__dirname, '../../web/dist')
+const SHOULD_SERVE_BUILT_WEB = existsSync(WEB_DIST_DIR) && (__filename.endsWith('/dist/index.js') || process.env.NODE_ENV === 'production')
+const WEB_ORIGIN = SHOULD_SERVE_BUILT_WEB ? `http://localhost:${PORT}` : 'http://localhost:5173'
 
 app.use(cors())
 app.use(express.json())
@@ -35,7 +43,7 @@ app.post('/api/review', async (req, res) => {
     code_review: 'code-review',
   }
   const path = routeMap[type] ?? 'review'
-  const url = `http://localhost:5173/${path}/${id}`
+  const url = `${WEB_ORIGIN}/${path}/${id}`
   console.log(`[openclaw-ui] Review session created: ${id}`)
   console.log(`[openclaw-ui] Opening browser: ${url}`)
 
@@ -165,6 +173,15 @@ function buildActionSummary(result: Record<string, unknown>): string {
   }
 
   return lines.join('\n')
+}
+
+if (SHOULD_SERVE_BUILT_WEB) {
+  app.use(express.static(WEB_DIST_DIR))
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next()
+    res.sendFile(join(WEB_DIST_DIR, 'index.html'))
+  })
+  console.log(`[openclaw-ui] Serving web UI from ${WEB_DIST_DIR}`)
 }
 
 app.listen(PORT, () => {
