@@ -69,6 +69,15 @@ agentclick
 
 This starts the AgentClick server on `http://localhost:3001` and serves the built web UI on the same port.
 
+CLI options:
+
+```bash
+agentclick --help
+PORT=3002 agentclick
+```
+
+By default, `agentclick` starts on port `3001`. If that port is in use, it automatically tries `3002`, `3003`, and so on.
+
 Optional server config (defaults shown in `.env.example`):
 
 ```bash
