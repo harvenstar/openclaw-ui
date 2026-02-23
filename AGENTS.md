@@ -50,25 +50,31 @@ curl -s -X POST http://localhost:3001/api/review \
 
 | File | Purpose |
 |------|---------|
-| `packages/server/src/index.ts` | Express API: `/api/review`, `/api/sessions`, `/api/sessions/:id/complete` |
+| `packages/server/src/index.ts` | Express API: all routes, long-poll `/wait` endpoint, browser auto-open |
+| `packages/server/src/store.ts` | SQLite session store via `better-sqlite3` → `~/.openclaw/clawui-sessions.db` |
 | `packages/server/src/preference.ts` | Writes AVOID rules to `~/.openclaw/workspace/MEMORY.md` |
 | `packages/web/src/pages/ReviewPage.tsx` | Main UI — two-column inbox + draft review (Format B) and legacy single-column (Format A) |
 | `packages/web/src/pages/ApprovalPage.tsx` | Action approval UI |
 | `packages/web/src/pages/CodeReviewPage.tsx` | Shell command review UI |
 | `packages/web/src/pages/HomePage.tsx` | Session history list |
-| `skills/` | OpenClaw SKILL.md files that trigger AgentClick |
+| `skills/` | OpenClaw SKILL.md files (use `host.docker.internal:3001` if OpenClaw runs in Docker) |
+| `scripts/demo.sh` | One-command test: `./scripts/demo.sh [email\|approval\|code]` |
+| `scripts/install-skills.sh` | Copies skills to `~/.openclaw/skills/` and `~/.openclaw/workspace/skills/` |
 
 ---
 
 ## API Shape
 
-**POST /api/review** — agent creates a session
+**POST /api/review** — agent creates a session, browser opens automatically
 **GET /api/sessions** — list sessions (max 20, sorted by createdAt desc)
 **GET /api/sessions/:id** — get single session
-**POST /api/sessions/:id/complete** — user submits decision, triggers OpenClaw callback
+**GET /api/sessions/:id/wait** — long-poll, blocks up to 5 min until user submits (agent calls this to wait for review result)
+**POST /api/sessions/:id/complete** — UI submits user decision
 
-OpenClaw webhook: `POST http://localhost:18789/hooks/agent`
+OpenClaw webhook (optional): `POST http://localhost:18789/hooks/agent`
 Body: `{ message: string, sessionKey: string, deliver: true }`
+
+> For agents running in Docker: use `host.docker.internal:3001` instead of `localhost:3001`.
 
 ---
 
@@ -94,5 +100,16 @@ Read `docs/dev-rules.md` before writing any code. Key rules:
 
 ## What's Done / What's Pending
 
-**Done:** ReviewPage v2 (two-column), ApprovalPage, CodeReviewPage, HomePage, preference learning, risk color grading
-**Pending:** SQLite session persistence, Express unified serving (eliminate 3001/5173 split), npm global package, OpenClaw real integration test
+**Done:**
+- ReviewPage v2 (two-column inbox + draft), ApprovalPage, CodeReviewPage, HomePage
+- Preference learning (writes AVOID rules to MEMORY.md on paragraph delete)
+- Risk-based color grading on session history
+- SQLite session persistence (`~/.openclaw/clawui-sessions.db`)
+- Long-poll `/wait` endpoint for agent integration
+- Keyboard shortcuts: `Escape` closes dropdown, `Cmd+Enter` submits
+- End-to-end tested with OpenClaw (Docker) via Feishu — full loop verified
+
+**Pending:**
+- Express unified serving (eliminate 3001/5173 dual port — needed before npm publish)
+- npm global package (`openclaw-ui` on npm)
+- CC suggestions as checkboxes (currently free-text input; agent can pass `ccSuggestions[]`)
