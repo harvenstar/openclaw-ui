@@ -1,6 +1,25 @@
 {
   "name": "agentclick",
-  "version": "0.1.1",
+  "version": "0.2.0",
+  "description": "Human-in-the-loop approval UI for AI agents. Review, edit, and approve agent actions in your browser before they execute.",
+  "keywords": [
+    "ai-agent",
+    "human-in-the-loop",
+    "approval",
+    "hitl",
+    "llm",
+    "langchain",
+    "openai",
+    "agent-ui",
+    "agentic",
+    "ai-safety",
+    "human-oversight"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentlayer-io/AgentClick.git"
+  },
+  "homepage": "https://github.com/agentlayer-io/AgentClick",
   "bin": {
     "agentclick": "./bin/agentclick.mjs"
   },
@@ -11,8 +30,7 @@
     "packages/server/package.json",
     "packages/web/dist/",
     "packages/web/package.json",
-    "README.md",
-    "AGENTS.md"
+    "README.md"
   ],
   "workspaces": [
     "packages/*"

@@ -30,7 +30,8 @@ case $TYPE in
           "command": "rm -rf ./dist && npm run build",
           "cwd": "/Users/demo/project",
           "explanation": "Clean build artifacts and rebuild the project.",
-          "risk": "low"
+          "risk": "low",
+          "files": ["src/index.ts", "src/pages/ReviewPage.tsx", "src/utils/helpers.ts", "package.json"]
         }
       }' | python3 -m json.tool
     ;;
@@ -82,6 +83,10 @@ case $TYPE in
               { "id": "p1", "content": "Hi John, thanks for following up on the Q1 review." },
               { "id": "p2", "content": "I confirm we are aligned on the timeline discussed in our last meeting." },
               { "id": "p3", "content": "Please do not hesitate to reach out should you require any further clarification on the matter at hand." }
+            ],
+            "intentSuggestions": [
+              { "id": "agree_timeline", "text": "Agree to finalize the roadmap by Friday" },
+              { "id": "schedule_sync", "text": "Schedule a follow-up sync meeting" }
             ]
           }
         }
