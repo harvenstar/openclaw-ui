@@ -1,7 +1,6 @@
 {
   "name": "agentclick",
   "version": "0.1.0",
-  "private": true,
   "bin": {
     "agentclick": "./bin/agentclick.mjs"
   },
@@ -22,6 +21,13 @@
     "dev": "concurrently \"npm run dev -w packages/server\" \"npm run dev -w packages/web\"",
     "build": "npm run build -w packages/server && npm run build -w packages/web",
     "start": "npm run start -w packages/server"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^4.19.2",
+    "open": "^10.1.0"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
