@@ -78,6 +78,10 @@ npm run build
 npm start          # serves API + built web UI on localhost:3001
 ```
 
+Deployment notes (reverse proxy, Docker/OpenClaw host mapping, env vars):
+
+- See `docs/deployment.md`
+
 Copy the skill to your OpenClaw workspace:
 
 ```bash
@@ -110,7 +114,7 @@ AgentClick/
 - [x] **M1** — Preference learning (auto-save rules to MEMORY.md)
 - [x] **M2 (partial)** — Agent integration loop (`/review` create session + `/wait` long-poll + callback)
 - [x] **Next** — Unified serving (single port; no separate Vite port in production)
-- [ ] **Next** — Production serve polish (deployment docs / environment examples)
+- [x] **Next** — Production serve polish (deployment docs / environment examples)
 - [ ] **Next** — npm global package (`openclaw-ui`)
 - [ ] **Next** — Remote mode UX + link delivery polish
 - [ ] **Later** — Agent task visualization (Mission Control view)

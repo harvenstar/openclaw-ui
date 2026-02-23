@@ -26,6 +26,9 @@ npm start
 # API + UI: http://localhost:3001
 ```
 
+Deployment / production notes:
+- `docs/deployment.md` (single-port serving, `.env`, Nginx reverse proxy example, Docker/OpenClaw host mapping)
+
 To test without a live agent, POST a mock session:
 
 ```bash
@@ -120,11 +123,11 @@ Read `docs/dev-rules.md` before writing any code. Key rules:
 - End-to-end tested with OpenClaw (Docker) via Feishu — full loop verified
 - Production single-port serving (`npm run build && npm start`)
 - Minimal CI build workflow (GitHub Actions: `npm ci && npm run build`)
+- Deployment guide (`docs/deployment.md`) for single-port runtime, env vars, reverse proxy, and Docker/OpenClaw notes
 
 **Pending:**
 - npm global package (`openclaw-ui` on npm)
 - CC suggestions as checkboxes (currently free-text input; agent can pass `ccSuggestions[]`)
-- Production serving docs polish (deployment examples / reverse proxy notes)
 
 ---
 
