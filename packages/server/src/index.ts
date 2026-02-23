@@ -1,8 +1,8 @@
 import express from 'express'
 import cors from 'cors'
 import open from 'open'
-import { learnFromDeletions } from './preference'
-import { createSession, getSession, listSessions, completeSession } from './store'
+import { learnFromDeletions } from './preference.js'
+import { createSession, getSession, listSessions, completeSession } from './store.js'
 
 const app = express()
 const PORT = 3001
