@@ -5,9 +5,9 @@ description: Use this skill when you have finished writing an email draft and ne
 
 # ClawUI Email Review
 
-When you have an email draft ready for user review, execute these steps using the bash tool.
+When you have an email draft ready for user review, execute these steps **in order** using the bash tool.
 
-## Step 1: Submit draft for review (Format B)
+## Step 1: Submit draft for review
 
 ```bash
 RESPONSE=$(curl -s -X POST http://host.docker.internal:3001/api/review \
@@ -42,61 +42,52 @@ RESPONSE=$(curl -s -X POST http://host.docker.internal:3001/api/review \
       }
     }
   }')
-echo "$RESPONSE"
+SESSION_ID=$(echo "$RESPONSE" | grep -o '"sessionId":"[^"]*"' | cut -d'"' -f4)
+echo "Session: $SESSION_ID"
 ```
 
-Replace placeholders with actual content. Split body into 2–4 logical paragraphs. `intentSuggestions` are optional guesses about what the user might want — the user toggles Yes/No on each.
+Replace placeholders with actual content. Split body into 2–4 logical paragraphs.
 
-Save the `sessionId` from the response.
-
-## Step 2: Wait for the user to finish (blocks up to 5 minutes)
+## Step 2: Wait for user review
 
 ```bash
-SESSION_ID="<sessionId from Step 1>"
-curl -s "http://host.docker.internal:3001/api/sessions/${SESSION_ID}/wait"
+RESULT=$(curl -s "http://host.docker.internal:3001/api/sessions/${SESSION_ID}/wait")
+echo "$RESULT"
 ```
 
-The browser opens automatically. This call blocks until the user submits.
+The browser opens automatically. This call blocks until the user submits their decision.
 
-## Step 3: Read the result and act
+## Step 3: Check the status field in the response
 
-The response contains `status` and `result`:
+Parse the `status` field from the response.
 
-### If `status` is `completed` and `result.confirmed` is `true`:
+**If `status` is `"completed"`:** The user confirmed. Send the email now. Do NOT ask "are you sure?" — the user already confirmed in the UI. Apply any `result.actions` before sending. Then stop — you are done.
 
-**Execute immediately. Do NOT ask the user for confirmation again.** The user already confirmed in the UI — proceed with sending the email.
+**If `status` is `"rewriting"`:** The user wants you to rewrite the draft. Go to Step 4.
 
-Apply any `result.actions` (paragraph-level delete/rewrite) before sending.
+## Step 4: Rewrite and update the SAME session (only if status was "rewriting")
 
-### If `status` is `rewriting` (or `result.regenerate` is `true`):
-
-The user requested a rewrite. Apply `result.actions` and `result.userIntention` to rewrite the draft, then **update the same session** (do NOT create a new session):
+Read `result.actions` and `result.userIntention` from the response. Rewrite the draft paragraphs based on the user's feedback. Then send the rewritten draft back to the **same session** using this PUT request:
 
 ```bash
-SESSION_ID="<same sessionId from Step 1>"
 curl -s -X PUT "http://host.docker.internal:3001/api/sessions/${SESSION_ID}/payload" \
   -H "Content-Type: application/json" \
   -d '{
     "payload": {
-      "inbox": [... same inbox ...],
+      "inbox": [... keep the same inbox array from Step 1 ...],
       "draft": {
         "replyTo": "e1",
         "to": "RECIPIENT_EMAIL",
         "subject": "Re: ORIGINAL_SUBJECT",
         "paragraphs": [
-          {"id": "p1", "content": "REWRITTEN_PARAGRAPH_1"},
-          {"id": "p2", "content": "REWRITTEN_PARAGRAPH_2"}
-        ],
-        "intentSuggestions": [...]
+          {"id": "p1", "content": "NEW_REWRITTEN_PARAGRAPH_1"},
+          {"id": "p2", "content": "NEW_REWRITTEN_PARAGRAPH_2"}
+        ]
       }
     }
   }'
 ```
 
-Then **wait again on the same session** — go back to Step 2. The UI refreshes in-place with the new draft. Repeat until the user confirms or rejects.
+**IMPORTANT:** Do NOT create a new session. Reuse the same `SESSION_ID`.
 
-### Additional result fields:
-
-- `result.selectedIntents` → `[{id, accepted}]` intent decisions the user made
-- `result.userIntention` → free-text note from the user
-- `result.markedAsRead` → email IDs the user chose to skip
+After the PUT succeeds, **go back to Step 2** and wait again. The user will see the updated draft in the same browser tab. Repeat Step 2 → 3 → 4 until the user confirms.
