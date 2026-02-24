@@ -16,7 +16,7 @@ RESPONSE=$(curl -s -X POST http://host.docker.internal:3001/api/review \
     "type": "action_approval",
     "payload": {
       "action": "ONE_LINE_DESCRIPTION",
-      "detail": "FULL_DETAIL_OF_WHAT_YOU_WILL_DO",
+      "description": "FULL_DETAIL_OF_WHAT_YOU_WILL_DO",
       "risk": "low|medium|high"
     }
   }')
@@ -25,20 +25,16 @@ echo "$RESPONSE"
 
 Save the `sessionId` from the response.
 
-## Step 2: Notify the user
-
-> "I need your approval before proceeding. Please open http://localhost:5173 in your browser to review."
-
-## Step 3: Wait for decision (blocks up to 5 minutes)
+## Step 2: Wait for decision (blocks up to 5 minutes)
 
 ```bash
 SESSION_ID="<sessionId from Step 1>"
 curl -s "http://host.docker.internal:3001/api/sessions/${SESSION_ID}/wait"
 ```
 
-## Step 4: Act on the decision
+The browser opens automatically. This call blocks until the user submits.
 
-Read `result.approved` from the response:
+## Step 3: Act on the decision
 
-- `true` → proceed with the action. If `result.note` is set, incorporate it.
-- `false` → stop. Inform the user the action was rejected.
+- `result.approved: true` → **Execute immediately. Do NOT ask the user again.** The user already approved in the UI. If `result.note` is set, incorporate it.
+- `result.approved: false` → Stop. Inform the user the action was rejected.
