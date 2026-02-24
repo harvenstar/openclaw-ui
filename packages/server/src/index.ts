@@ -41,6 +41,8 @@ app.post('/api/review', async (req, res) => {
   const routeMap: Record<string, string> = {
     action_approval: 'approval',
     code_review: 'code-review',
+    form_review: 'form-review',
+    selection_review: 'selection',
   }
   const path = routeMap[type] ?? 'review'
   const url = `${WEB_ORIGIN}/${path}/${id}`
