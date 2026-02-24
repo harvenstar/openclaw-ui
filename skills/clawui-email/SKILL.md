@@ -92,11 +92,7 @@ Do not use any other polling endpoint.
 
 ## Step 3: Act based on STATUS
 
-Run this bash command to check the status (only when STATUS is not `pending`):
-
-```bash
-echo "=== CHECKING STATUS: $STATUS ==="
-```
+Do not print extra debug lines here. Branch directly on `STATUS`.
 
 There are exactly three cases:
 
@@ -130,7 +126,6 @@ Do NOT inline JSON directly in the curl command.
 Use this exact two-step pattern:
 
 ```bash
-echo "=== ENTERING STEP 4: REWRITING DRAFT ==="
 cat > /tmp/clawui_payload.json <<'JSON'
 {
   "payload": {
@@ -152,7 +147,7 @@ HTTP_CODE=$(curl -s -o /tmp/clawui_put_response.txt -w "%{http_code}" \
   -X PUT "http://host.docker.internal:3001/api/sessions/${SESSION_ID}/payload" \
   -H "Content-Type: application/json" \
   -d @/tmp/clawui_payload.json)
-echo "=== PUT PAYLOAD DONE: HTTP $HTTP_CODE ==="
+echo "PUT_PAYLOAD_HTTP=$HTTP_CODE"
 cat /tmp/clawui_put_response.txt
 ```
 
