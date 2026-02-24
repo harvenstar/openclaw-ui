@@ -131,7 +131,10 @@ app.get('/api/sessions/:id/wait', async (req, res) => {
   while (Date.now() - start < TIMEOUT_MS) {
     const session = getSession(req.params.id)
     if (!session) return res.status(404).json({ error: 'Session not found' })
-    if (session.status === 'completed' || session.status === 'rewriting') return res.json(session)
+    if (session.status === 'completed' || session.status === 'rewriting') {
+      console.log(`[agentclick] /wait returning ${session.status} for ${session.id} (revision=${session.revision})`)
+      return res.json(session)
+    }
     await new Promise(r => setTimeout(r, POLL_MS))
   }
 
@@ -144,8 +147,10 @@ app.put('/api/sessions/:id/payload', (req, res) => {
   if (!session) return res.status(404).json({ error: 'Session not found' })
   if (session.status !== 'rewriting') return res.status(400).json({ error: 'Session is not in rewriting state' })
 
+  console.log(`[agentclick] Payload update requested for ${session.id} (status=${session.status}, revision=${session.revision})`)
   updateSessionPayload(req.params.id, req.body.payload)
-  console.log(`[agentclick] Session ${session.id} payload updated, back to pending`)
+  const updated = getSession(req.params.id)
+  console.log(`[agentclick] Session ${session.id} payload updated, back to pending (revision=${updated?.revision ?? 'unknown'})`)
   res.json({ ok: true })
 })
 
