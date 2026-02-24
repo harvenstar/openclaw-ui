@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
@@ -10,7 +10,17 @@ const __filename = fileURLToPath(import.meta.url)
 const rootDir = dirname(dirname(__filename))
 const webDistIndex = join(rootDir, 'packages', 'web', 'dist', 'index.html')
 const serverDistEntry = join(rootDir, 'packages', 'server', 'dist', 'index.js')
+const packageJsonPath = join(rootDir, 'package.json')
 const args = process.argv.slice(2)
+
+function readVersion() {
+  try {
+    const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
+    return typeof pkg.version === 'string' ? pkg.version : 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
 
 function printHelp() {
   console.log(`AgentClick CLI
@@ -20,7 +30,16 @@ Usage:
   agentclick --help
 
 Options:
+  --version, -v   Show version number
   --help, -h   Show this help message
+
+Examples:
+  agentclick              Start the server (auto-detects port)
+  PORT=4000 agentclick    Start on a specific port
+
+Environment:
+  PORT                    Server port (default: 3001, auto-increments if busy)
+  OPENCLAW_WEBHOOK        Webhook URL for agent callbacks
 `)
 }
 
@@ -29,6 +48,10 @@ function parseArgs(argv) {
     const arg = argv[i]
     if (arg === '--help' || arg === '-h') {
       printHelp()
+      process.exit(0)
+    }
+    if (arg === '--version' || arg === '-v') {
+      console.log(readVersion())
       process.exit(0)
     }
     console.error(`[agentclick] Unknown argument: ${arg}`)
