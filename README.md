@@ -19,7 +19,7 @@ AI agents fail silently and take irreversible actions. AgentClick puts a human r
 ## Quick Start
 
 ```bash
-npm install -g agentclick
+npm install -g @harvenstar/agentclick
 agentclick
 ```
 
