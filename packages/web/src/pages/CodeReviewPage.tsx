@@ -152,7 +152,7 @@ export default function CodeReviewPage() {
   const [expandedDirs, setExpandedDirs] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    fetch(`http://localhost:3001/api/sessions/${id}`)
+    fetch(`/api/sessions/${id}`)
       .then(r => r.json())
       .then(data => {
         setPayload(data.payload as CodePayload)
@@ -163,7 +163,7 @@ export default function CodeReviewPage() {
 
   const submit = async (approved: boolean) => {
     setSubmitting(true)
-    const result = await fetch(`http://localhost:3001/api/sessions/${id}/complete`, {
+    const result = await fetch(`/api/sessions/${id}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ approved, note })

@@ -59,7 +59,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/sessions')
+    fetch('/api/sessions')
       .then(r => r.json())
       .then(data => {
         setSessions(data)

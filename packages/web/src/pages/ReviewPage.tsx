@@ -115,7 +115,7 @@ export default function ReviewPage() {
   const [summaryError, setSummaryError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`http://localhost:3001/api/sessions/${id}`)
+    fetch(`/api/sessions/${id}`)
       .then(r => r.json())
       .then(data => {
         setPayload(data.payload as EmailPayload | InboxPayload)
@@ -182,7 +182,7 @@ export default function ReviewPage() {
     setSummaryData(null)
     setRightView('summary')
     try {
-      const result = await fetch(`http://localhost:3001/api/sessions/${id}/summary?emailId=${encodeURIComponent(email.id)}`)
+      const result = await fetch(`/api/sessions/${id}/summary?emailId=${encodeURIComponent(email.id)}`)
         .then(r => r.json() as Promise<SummaryResponse>)
       if (result.error) {
         setSummaryError(result.error)
@@ -210,7 +210,7 @@ export default function ReviewPage() {
           selectedIntents: selectedIntentsList,
         })
       : JSON.stringify({ actions, confirmed, regenerate: !confirmed })
-    const result = await fetch(`http://localhost:3001/api/sessions/${id}/complete`, {
+    const result = await fetch(`/api/sessions/${id}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body,

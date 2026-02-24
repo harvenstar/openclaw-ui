@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 
 interface ApprovalPayload {
   action: string
-  detail: string
+  description: string
   risk: 'low' | 'medium' | 'high'
 }
 
@@ -31,7 +31,7 @@ export default function ApprovalPage() {
   const [callbackFailed, setCallbackFailed] = useState(false)
 
   useEffect(() => {
-    fetch(`http://localhost:3001/api/sessions/${id}`)
+    fetch(`/api/sessions/${id}`)
       .then(r => r.json())
       .then(data => {
         setPayload(data.payload as ApprovalPayload)
@@ -42,7 +42,7 @@ export default function ApprovalPage() {
 
   const submit = async (approved: boolean) => {
     setSubmitting(true)
-    const result = await fetch(`http://localhost:3001/api/sessions/${id}/complete`, {
+    const result = await fetch(`/api/sessions/${id}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ approved, note })
@@ -96,7 +96,7 @@ export default function ApprovalPage() {
 
         {/* Detail */}
         <div className="mb-6 p-4 bg-white border border-gray-100 rounded-lg">
-          <p className="text-sm text-zinc-700 leading-relaxed">{payload.detail}</p>
+          <p className="text-sm text-zinc-700 leading-relaxed">{payload.description}</p>
         </div>
 
         {/* Note */}
