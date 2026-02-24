@@ -34,6 +34,9 @@ This workflow must be fast and mechanical:
 - NEVER use `/wait` (use only `GET /api/sessions/${SESSION_ID}`)
 - During polling, do not narrate between polls unless STATUS changes to `rewriting` or `completed`
 - Keep polling interval fixed at `sleep 1` (do not increase to 2/3/5 seconds)
+- Do NOT use `for`/`while` shell loops for polling
+- Each poll must be a single `exec` call (one GET request only), then branch in Step 3
+- Do NOT run background polling jobs or long-running polling commands
 
 ## Step 1: Submit draft for review
 
@@ -89,6 +92,7 @@ fi
 
 The browser opens automatically. This is a short poll request (do not use `/wait` here).
 Do not use any other polling endpoint.
+Do not wrap polling in a shell loop (`for`, `while`, `until`).
 
 ## Step 3: Act based on STATUS
 
