@@ -82,13 +82,13 @@ function categoryBadge(category: string) {
 }
 
 function formatTimestamp(ts: number): string {
+  if (!ts) return '—'
   const d = new Date(ts)
   const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffH = Math.floor(diffMs / 3600000)
-  if (diffH < 24) return diffH < 1 ? 'now' : `${diffH}h ago`
-  const diffD = Math.floor(diffH / 24)
-  return diffD < 7 ? `${diffD}d ago` : d.toLocaleDateString()
+  const sameYear = d.getFullYear() === now.getFullYear()
+  const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' })
+  const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${dateStr}, ${timeStr}`
 }
 
 export default function ReviewPage() {
@@ -230,7 +230,7 @@ export default function ReviewPage() {
   const submit = async (confirmed: boolean) => {
     setSubmitting(true)
     const hasInbox = payload && 'inbox' in payload && Array.isArray((payload as InboxPayload).inbox)
-    const selectedIntentsList = Object.entries(selectedIntents).map(([intentId, accepted]) => ({ id: intentId, accepted }))
+    const selectedIntentsList = Object.keys(selectedIntents).map(intentId => ({ id: intentId, accepted: true }))
     const body = hasInbox
       ? JSON.stringify({
           actions,
@@ -304,13 +304,13 @@ export default function ReviewPage() {
     const intentSuggestions = inboxPayload.draft.intentSuggestions ?? []
     const effectiveRightView = rightView === 'empty' && visibleEmails.length === 0 ? 'draft' : rightView
 
-    const toggleIntent = (intentId: string, value: boolean) => {
+    const toggleIntent = (intentId: string) => {
       setSelectedIntents(current => {
-        if (current[intentId] === value) {
+        if (current[intentId]) {
           const { [intentId]: _, ...rest } = current
           return rest
         }
-        return { ...current, [intentId]: value }
+        return { ...current, [intentId]: true }
       })
     }
 
@@ -320,47 +320,56 @@ export default function ReviewPage() {
         const action = actions.find(a => a.paragraphId === p.id)
 
         if (state === 'deleted') return (
-          <div key={p.id} className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded-lg">
-            <div className="flex-1 min-w-0">
-              <span className="text-sm text-red-400 line-through leading-relaxed">{p.content}</span>
-              {action?.reason && (
-                <span className="ml-2 inline-block text-xs text-red-300 bg-red-100 px-1.5 py-0.5 rounded">
-                  {reasonLabel(action.reason)}
-                </span>
-              )}
+          <div key={p.id} className="space-y-1">
+            <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded-lg">
+              <div className="flex-1 min-w-0">
+                <span className="text-sm text-red-400 line-through leading-relaxed">{p.content}</span>
+                {action?.reason && (
+                  <span className="ml-2 inline-block text-xs text-red-300 bg-red-100 px-1.5 py-0.5 rounded">
+                    {reasonLabel(action.reason)}
+                  </span>
+                )}
+              </div>
             </div>
-            <button
-              onClick={() => undoParagraph(p.id)}
-              className="text-xs text-gray-400 hover:text-gray-600 shrink-0 transition-colors"
-            >
-              undo
-            </button>
+            <div className="flex justify-end">
+              <button
+                onClick={() => undoParagraph(p.id)}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 rounded px-1"
+              >
+                undo
+              </button>
+            </div>
           </div>
         )
 
         if (state === 'rewriting') return (
-          <div key={p.id} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-gray-500 mb-2">{p.content}</p>
-            <input
-              className="w-full text-sm border border-blue-200 rounded px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
-              placeholder="How should it be rewritten? (e.g. more direct, no formalities)"
-              value={rewriteInput[p.id] || ''}
-              onChange={e => setRewriteInput(r => ({ ...r, [p.id]: e.target.value }))}
-            />
-            <div className="flex gap-2">
-              <button onClick={() => confirmRewrite(p.id)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors">Confirm</button>
-              <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
+          <div key={p.id} className="space-y-1">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-gray-500 mb-2 whitespace-pre-wrap">{p.content}</p>
+              <input
+                className="w-full text-sm border border-blue-200 rounded px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                placeholder="How should it be rewritten? (e.g. more direct, no formalities)"
+                value={rewriteInput[p.id] || ''}
+                onChange={e => setRewriteInput(r => ({ ...r, [p.id]: e.target.value }))}
+              />
+              <div className="flex gap-2">
+                <button onClick={() => confirmRewrite(p.id)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300">Confirm</button>
+                <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 rounded">Cancel</button>
+              </div>
             </div>
           </div>
         )
 
         return (
-          <div key={p.id} className="group relative flex items-start gap-3 p-4 bg-white border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
-            <p className="text-sm text-gray-700 flex-1 leading-relaxed">{p.content}</p>
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <div key={p.id} className="space-y-1">
+            <div className="p-4 bg-white border border-gray-100 rounded-lg">
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{p.content}</p>
+            </div>
+            <div className="flex justify-end gap-1">
               <button
                 onClick={() => startRewrite(p.id)}
-                className="text-xs text-gray-300 hover:text-blue-500 px-1.5 py-1 rounded hover:bg-blue-50 transition-colors"
+                style={{ color: '#457B9D' }}
+                className="text-xs font-medium px-2 py-1 rounded transition-opacity hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-1"
               >
                 Rewrite
               </button>
@@ -382,11 +391,12 @@ export default function ReviewPage() {
               return (
                 <div
                   key={email.id}
-                  className={`group relative p-4 cursor-pointer border-b border-gray-50 transition-colors ${
+                  className={`p-4 cursor-pointer border-b border-gray-50 transition-colors ${
                     isSelected
-                      ? 'bg-zinc-50 border-l-2 border-l-blue-500'
+                      ? 'border-l-2'
                       : 'hover:bg-gray-50'
                   }`}
+                  style={isSelected ? { backgroundColor: '#F1FAEE', borderLeftColor: '#457B9D' } : {}}
                   onClick={() => handleViewEmail(email)}
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
@@ -394,31 +404,41 @@ export default function ReviewPage() {
                       {email.category}
                     </span>
                     <span className="text-sm font-medium text-zinc-800 truncate flex-1 min-w-0">{email.from}</span>
-                    {/* Hover actions — inline so from text truncates around them */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={e => { e.stopPropagation(); handleReply(email) }}
-                        className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
-                      >
-                        Reply
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleMarkAsRead(email.id) }}
-                        className="text-xs text-zinc-300 hover:text-zinc-600 transition-colors"
-                      >
-                        Read
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleSummary(email) }}
-                        className="text-xs text-zinc-300 hover:text-zinc-600 transition-colors"
-                      >
-                        Summary
-                      </button>
-                    </div>
                   </div>
                   <p className="text-xs text-zinc-500 truncate mb-0.5">{email.subject}</p>
-                  <p className="text-xs text-zinc-400 line-clamp-2">{email.preview}</p>
-                  <p className="text-xs text-zinc-300 mt-1">{formatTimestamp(email.timestamp)}</p>
+                  <p className="text-xs text-zinc-400 line-clamp-2 mb-2">{email.preview}</p>
+                  {/* Line 1: action buttons */}
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    {/* Reply — primary: dark navy fill */}
+                    <button
+                      onClick={e => { e.stopPropagation(); handleReply(email) }}
+                      className="text-xs font-semibold px-3 py-1 rounded-full transition-all hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                      style={{ backgroundColor: '#1D3557', color: '#F1FAEE', boxShadow: '0 1px 3px rgba(29,53,87,0.25)' }}
+                      aria-label="Reply to email"
+                    >
+                      Reply
+                    </button>
+                    {/* Read — secondary: soft teal fill */}
+                    <button
+                      onClick={e => { e.stopPropagation(); handleMarkAsRead(email.id) }}
+                      className="text-xs font-medium px-3 py-1 rounded-full transition-all hover:shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                      style={{ backgroundColor: '#A8DADC', color: '#1D3557' }}
+                      aria-label="Mark as read"
+                    >
+                      Read
+                    </button>
+                    {/* Summary — ghost: outlined */}
+                    <button
+                      onClick={e => { e.stopPropagation(); handleSummary(email) }}
+                      className="text-xs font-medium px-3 py-1 rounded-full transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                      style={{ border: '1.5px solid #457B9D', color: '#457B9D', backgroundColor: 'transparent' }}
+                      aria-label="View summary"
+                    >
+                      Summary
+                    </button>
+                  </div>
+                  {/* Line 2: timestamp */}
+                  <div className="text-xs font-medium" style={{ color: '#A8DADC' }}>{formatTimestamp(email.timestamp)}</div>
                 </div>
               )
             })
@@ -492,7 +512,7 @@ export default function ReviewPage() {
                   <div className="flex items-center gap-2 mb-6">
                     <button
                       onClick={() => { setSelectedEmailId(null); setRightView('empty') }}
-                      className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors"
+                      className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 rounded"
                     >
                       Back
                     </button>
@@ -507,16 +527,40 @@ export default function ReviewPage() {
                       <span className="text-xs text-zinc-400">{formatTimestamp(email.timestamp)}</span>
                     </div>
                     <h2 className="text-base font-medium text-zinc-800 mb-1">{email.subject}</h2>
-                    <p className="text-xs text-zinc-500 mb-6">From: {email.from}</p>
-                    <div className="p-4 bg-white border border-gray-100 rounded-lg mb-6">
-                      <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">{email.preview}</p>
+                    <p className="text-xs text-zinc-500 mb-4">From: {email.from}</p>
+                    {/* Action row */}
+                    <div className="flex items-center gap-2 mb-6">
+                      {/* Reply — primary */}
+                      <button
+                        onClick={() => handleReply(email)}
+                        className="text-sm font-semibold px-5 py-2 rounded-lg transition-all hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                        style={{ backgroundColor: '#1D3557', color: '#F1FAEE', boxShadow: '0 1px 4px rgba(29,53,87,0.25)' }}
+                        aria-label="Reply to email"
+                      >
+                        Reply
+                      </button>
+                      {/* Read — secondary */}
+                      <button
+                        onClick={() => handleMarkAsRead(email.id)}
+                        className="text-sm font-medium px-5 py-2 rounded-lg transition-all hover:shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                        style={{ backgroundColor: '#A8DADC', color: '#1D3557' }}
+                        aria-label="Mark as read"
+                      >
+                        Read
+                      </button>
+                      {/* Summary — ghost */}
+                      <button
+                        onClick={() => handleSummary(email)}
+                        className="text-sm font-medium px-5 py-2 rounded-lg transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                        style={{ border: '1.5px solid #457B9D', color: '#457B9D', backgroundColor: 'transparent' }}
+                        aria-label="View summary"
+                      >
+                        Summary
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleReply(email)}
-                      className="bg-blue-500 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                    >
-                      Reply
-                    </button>
+                    <div className="p-4 bg-white border border-gray-100 rounded-lg">
+                      <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">{email.preview || 'No content available.'}</p>
+                    </div>
                   </div>
                 </div>
               )
@@ -541,7 +585,7 @@ export default function ReviewPage() {
                 )}
 
                 {/* Paragraphs */}
-                <div className="space-y-3 mb-8">
+                <div className="space-y-5 mb-8">
                   {renderParagraphs(inboxPayload.draft.paragraphs)}
                 </div>
 
@@ -568,44 +612,21 @@ export default function ReviewPage() {
                 {intentSuggestions.length > 0 && (
                   <div className="mb-6">
                     <label className="block text-xs text-zinc-500 mb-2">Intent Suggestions</label>
-                    <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
                       {intentSuggestions.map(suggestion => {
-                        const selection = selectedIntents[suggestion.id]
+                        const selected = !!selectedIntents[suggestion.id]
                         return (
-                          <div
+                          <button
                             key={suggestion.id}
-                            className={`flex items-center gap-3 p-3 border rounded-lg transition-colors ${
-                              selection === true
-                                ? 'border-green-200 bg-green-50'
-                                : selection === false
-                                  ? 'border-red-100 bg-red-50/50'
-                                  : 'border-gray-100 bg-white'
-                            }`}
+                            onClick={() => toggleIntent(suggestion.id)}
+                            className="text-sm font-medium px-3 py-1.5 rounded-full border transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-1 hover:opacity-85"
+                            style={selected
+                              ? { backgroundColor: '#457B9D', color: '#F1FAEE', borderColor: '#457B9D' }
+                              : { backgroundColor: 'white', color: '#1D3557', borderColor: '#A8DADC' }}
+                            aria-pressed={selected}
                           >
-                            <p className="text-sm text-zinc-700 flex-1">{suggestion.text}</p>
-                            <div className="flex gap-1.5 shrink-0">
-                              <button
-                                onClick={() => toggleIntent(suggestion.id, true)}
-                                className={`text-xs px-2.5 py-1 rounded transition-colors ${
-                                  selection === true
-                                    ? 'bg-green-500 text-white'
-                                    : 'text-zinc-400 hover:text-green-600 border border-gray-200 hover:border-green-300'
-                                }`}
-                              >
-                                Yes
-                              </button>
-                              <button
-                                onClick={() => toggleIntent(suggestion.id, false)}
-                                className={`text-xs px-2.5 py-1 rounded transition-colors ${
-                                  selection === false
-                                    ? 'bg-red-400 text-white'
-                                    : 'text-zinc-400 hover:text-red-400 border border-gray-200 hover:border-red-200'
-                                }`}
-                              >
-                                No
-                              </button>
-                            </div>
-                          </div>
+                            {suggestion.text}
+                          </button>
                         )
                       })}
                     </div>
@@ -617,7 +638,8 @@ export default function ReviewPage() {
                   <button
                     onClick={() => submit(true)}
                     disabled={submitting || waitingForRewrite}
-                    className={`flex-1 bg-gray-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-gray-700 transition-colors ${submitting || waitingForRewrite ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex-1 text-sm font-semibold py-2.5 rounded-lg transition-opacity ${submitting || waitingForRewrite ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-90'}`}
+                    style={{ backgroundColor: '#2A9D8F', color: '#F1FAEE' }}
                   >
                     Confirm & Send
                   </button>
@@ -662,33 +684,37 @@ export default function ReviewPage() {
         )}
 
         {/* Paragraphs */}
-        <div className="space-y-3 mb-8">
+        <div className="space-y-5 mb-8">
           {legacyPayload.paragraphs.map(p => {
             const state = states[p.id] || 'normal'
             const action = actions.find(a => a.paragraphId === p.id)
 
             if (state === 'deleted') return (
-              <div key={p.id} className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded-lg">
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm text-red-400 line-through leading-relaxed">{p.content}</span>
-                  {action?.reason && (
-                    <span className="ml-2 inline-block text-xs text-red-300 bg-red-100 px-1.5 py-0.5 rounded">
-                      {reasonLabel(action.reason)}
-                    </span>
-                  )}
+              <div key={p.id} className="space-y-1">
+                <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-red-400 line-through leading-relaxed">{p.content}</span>
+                    {action?.reason && (
+                      <span className="ml-2 inline-block text-xs text-red-300 bg-red-100 px-1.5 py-0.5 rounded">
+                        {reasonLabel(action.reason)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <button
-                  onClick={() => undoParagraph(p.id)}
-                  className="text-xs text-gray-400 hover:text-gray-600 shrink-0 transition-colors"
-                >
-                  undo
-                </button>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => undoParagraph(p.id)}
+                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 rounded px-1"
+                  >
+                    undo
+                  </button>
+                </div>
               </div>
             )
 
             if (state === 'rewriting') return (
               <div key={p.id} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-gray-500 mb-2">{p.content}</p>
+                <p className="text-sm text-gray-500 mb-2 whitespace-pre-wrap">{p.content}</p>
                 <input
                   className="w-full text-sm border border-blue-200 rounded px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
                   placeholder="How should it be rewritten? (e.g. more direct, no formalities)"
@@ -696,19 +722,21 @@ export default function ReviewPage() {
                   onChange={e => setRewriteInput(r => ({ ...r, [p.id]: e.target.value }))}
                 />
                 <div className="flex gap-2">
-                  <button onClick={() => confirmRewrite(p.id)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors">Confirm</button>
-                  <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
+                  <button onClick={() => confirmRewrite(p.id)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300">Confirm</button>
+                  <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 rounded">Cancel</button>
                 </div>
               </div>
             )
 
             return (
-              <div key={p.id} className="group relative flex items-start gap-3 p-4 bg-white border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
-                <p className="text-sm text-gray-700 flex-1 leading-relaxed">{p.content}</p>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              <div key={p.id} className="space-y-1">
+                <div className="p-4 bg-white border border-gray-100 rounded-lg">
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{p.content}</p>
+                </div>
+                <div className="flex justify-end gap-1">
                   <button
                     onClick={() => startRewrite(p.id)}
-                    className="text-xs text-gray-300 hover:text-blue-500 px-1.5 py-1 rounded hover:bg-blue-50 transition-colors"
+                    className="text-xs text-zinc-400 hover:text-blue-500 px-2 py-1 rounded hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
                   >
                     Rewrite
                   </button>
@@ -731,7 +759,7 @@ export default function ReviewPage() {
           <button
             onClick={() => submit(true)}
             disabled={submitting || waitingForRewrite}
-            className={`flex-1 bg-gray-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-gray-700 transition-colors ${submitting || waitingForRewrite ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`flex-1 bg-green-600 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-green-700 transition-colors ${submitting || waitingForRewrite ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             Confirm & Send
           </button>
@@ -774,14 +802,17 @@ function DeleteButton({ onConfirm }: { onConfirm: (reasonKey: string) => void })
   if (!open) return (
     <button
       onClick={() => setOpen(true)}
-      className="text-xs text-gray-300 hover:text-red-400 px-1.5 py-1 rounded hover:bg-red-50 transition-colors"
+      className="text-xs font-medium px-2 py-1 rounded transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-1"
+      style={{ color: '#E63946' }}
+      aria-label="Delete paragraph"
     >
       Delete
     </button>
   )
 
   return (
-    <div ref={ref} className="absolute z-10 top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-sm p-1.5 min-w-[148px]">
+    <div ref={ref} className="relative">
+    <div className="absolute z-10 top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-sm p-1.5 min-w-[148px]">
       <p className="text-xs text-gray-400 mb-1 px-2 pt-0.5">Why remove this?</p>
       {REASONS.map(r => (
         <button
@@ -800,6 +831,7 @@ function DeleteButton({ onConfirm }: { onConfirm: (reasonKey: string) => void })
           Cancel
         </button>
       </div>
+    </div>
     </div>
   )
 }
