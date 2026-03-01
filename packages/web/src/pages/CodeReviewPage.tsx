@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -130,17 +130,18 @@ function buildFileTree(affectedFiles: AffectedFile[]): FileTreeNode[] {
 
 // ─── Mind-map file tree ───────────────────────────────────────────────────────
 
-const MM_LINE = '#CBD5E1'
-const MM_MID  = 11  // px from top of pill to its vertical centre (for connector alignment)
+const CURVE_W   = 36   // horizontal width of bezier connector area
+const CHILD_GAP = 5    // vertical gap between sibling nodes
 
-const STATUS_PILL: Record<AffectedFile['status'], { bg: string; border: string; text: string; label: string }> = {
-  added:    { bg: '#DCFCE7', border: '#86EFAC', text: '#166534', label: 'A' },
-  modified: { bg: '#DBEAFE', border: '#93C5FD', text: '#1E40AF', label: 'M' },
-  deleted:  { bg: '#FEE2E2', border: '#FCA5A5', text: '#991B1B', label: 'D' },
-  renamed:  { bg: '#FEF3C7', border: '#FDE68A', text: '#92400E', label: 'R' },
+// Low-saturation status palette
+const STATUS_STYLE: Record<AffectedFile['status'], { bg: string; border: string; text: string; label: string }> = {
+  added:    { bg: '#F0FDF4', border: '#BBF7D0', text: '#15803D', label: 'A' },
+  modified: { bg: '#EFF6FF', border: '#BFDBFE', text: '#1D4ED8', label: 'M' },
+  deleted:  { bg: '#FEF2F2', border: '#FECACA', text: '#B91C1C', label: 'D' },
+  renamed:  { bg: '#FFFBEB', border: '#FDE68A', text: '#A16207', label: 'R' },
 }
 
-// Compress single-child-dir chains: src/ → api/ (only on-path dir, no on-path files) → src/api/
+// Compress single-child-dir chains: src/ → api/ becomes src/api/
 function compressNode(node: FileTreeNode): FileTreeNode {
   if (node.type !== 'dir' || !node.children) return node
   const children = node.children.map(compressNode)
@@ -153,68 +154,184 @@ function compressNode(node: FileTreeNode): FileTreeNode {
   return { ...node, children }
 }
 
-function MindMapPill({ node }: { node: FileTreeNode }) {
+// Cubic bezier with horizontal tangents
+function bezierD(x1: number, y1: number, x2: number, y2: number): string {
+  const cx = (x1 + x2) * 0.55
+  return `M ${x1},${y1} C ${cx},${y1} ${cx},${y2} ${x2},${y2}`
+}
+
+function MindMapPill({ node, isHovered, isOnPath }: {
+  node: FileTreeNode
+  isHovered: boolean
+  isOnPath: boolean
+}) {
+  // Affected file — strongest visual presence
   if (node.type === 'file' && node.affected) {
-    const s = STATUS_PILL[node.affected.status]
+    const s = STATUS_STYLE[node.affected.status]
     return (
       <div
-        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-mono font-semibold whitespace-nowrap select-none"
-        style={{ backgroundColor: s.bg, border: `1.5px solid ${s.border}`, color: s.text }}
+        data-pill
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold whitespace-nowrap select-none"
+        style={{
+          backgroundColor: s.bg,
+          border: `1.5px solid ${isHovered ? s.text : s.border}`,
+          color: s.text,
+          boxShadow: isHovered ? '0 1px 6px rgba(0,0,0,0.07)' : 'none',
+          transform: isHovered ? 'scale(1.04)' : 'none',
+          transition: 'all 0.2s ease',
+        }}
       >
-        <span className="text-[10px] font-bold opacity-80">{s.label}</span>
+        <span className="text-[9px] font-bold opacity-70">{s.label}</span>
         <span>{node.name}</span>
         {node.affected.status === 'renamed' && node.affected.oldPath && (
-          <span className="font-normal opacity-60 text-[10px]">← {node.affected.oldPath.split('/').pop()}</span>
+          <span className="font-normal opacity-50 text-[10px]">← {node.affected.oldPath.split('/').pop()}</span>
         )}
       </div>
     )
   }
-  const dimmed = !node.onPath
+
+  // Directory — light structural node
+  if (node.type === 'dir') {
+    const active = isOnPath || isHovered
+    return (
+      <div
+        data-pill
+        className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-mono whitespace-nowrap select-none"
+        style={{
+          backgroundColor: active ? '#F1F5F9' : '#FAFAFC',
+          border: `1px solid ${active ? '#CBD5E1' : '#F0F1F3'}`,
+          color: active ? '#475569' : '#9CA3AF',
+          fontWeight: 500,
+          transition: 'all 0.2s ease',
+        }}
+      >
+        {node.name}/
+      </div>
+    )
+  }
+
+  // Off-path file — very subtle
   return (
     <div
-      className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-mono whitespace-nowrap select-none"
+      data-pill
+      className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-mono whitespace-nowrap select-none"
       style={{
-        backgroundColor: dimmed ? '#F8FAFC' : (node.type === 'dir' ? '#F1F5F9' : '#F8FAFC'),
-        border: `1px solid ${dimmed ? '#F1F5F9' : '#E2E8F0'}`,
-        color: dimmed ? '#94a3b8' : (node.type === 'dir' ? '#334155' : '#64748b'),
-        fontWeight: node.type === 'dir' ? 600 : 400,
+        backgroundColor: '#FAFAFC',
+        border: '1px solid #F0F1F3',
+        color: '#9CA3AF',
+        transition: 'all 0.2s ease',
       }}
     >
-      {node.type === 'dir' ? `${node.name}/` : node.name}
+      {node.name}
     </div>
   )
 }
 
-function MindMapNode({ node }: { node: FileTreeNode }) {
+function MindMapBranch({ node, depth, hoveredPath, onHover }: {
+  node: FileTreeNode
+  depth: number
+  hoveredPath: string | null
+  onHover: (path: string | null) => void
+}) {
+  const pillRef = useRef<HTMLDivElement>(null)
+  const childrenRef = useRef<HTMLDivElement>(null)
+  const [curves, setCurves] = useState<{ parentMid: number; childMids: number[] }>({ parentMid: 12, childMids: [] })
+
   const children = node.children ?? []
-  const onPath  = children.filter(c => c.onPath)
-  const offPath = children.filter(c => !c.onPath)
-  // Show all on-path children; show at most 1 off-path child, hide the rest
-  const shown  = [...onPath, ...offPath.slice(0, 1)]
-  const hidden = offPath.length - Math.min(offPath.length, 1)
-  const hasChildren = shown.length > 0 || hidden > 0
+  const onPathKids = children.filter(c => c.onPath)
+  const offPathKids = children.filter(c => !c.onPath)
+  const shown  = [...onPathKids, ...offPathKids.slice(0, 1)]
+  const hidden = offPathKids.length - Math.min(offPathKids.length, 1)
+  const totalSlots = shown.length + (hidden > 0 ? 1 : 0)
+
+  useLayoutEffect(() => {
+    if (!pillRef.current || !childrenRef.current || totalSlots === 0) return
+    const parentMid = pillRef.current.offsetHeight / 2
+    const container = childrenRef.current
+    const childMids: number[] = []
+    for (let i = 0; i < container.children.length; i++) {
+      const el = container.children[i] as HTMLElement
+      const pill = el.querySelector('[data-pill]') as HTMLElement | null
+      const h = pill?.offsetHeight ?? 24
+      childMids.push(el.offsetTop + h / 2)
+    }
+    setCurves(prev => {
+      if (prev.parentMid === parentMid &&
+          prev.childMids.length === childMids.length &&
+          prev.childMids.every((m, i) => Math.abs(m - childMids[i]) < 0.5)) {
+        return prev
+      }
+      return { parentMid, childMids }
+    })
+  })
+
+  const isOnHoverPath = hoveredPath != null && (
+    hoveredPath === node.path || hoveredPath.startsWith(node.path + '/')
+  )
+  const isHovered = hoveredPath === node.path
+
+  const childIsOnHoverPath = (child: FileTreeNode) => hoveredPath != null && (
+    hoveredPath === child.path || hoveredPath.startsWith(child.path + '/')
+  )
 
   return (
     <div className="flex items-start">
-      <MindMapPill node={node} />
-      {hasChildren && (
-        <div className="flex items-start" style={{ flexShrink: 0 }}>
-          {/* Horizontal arm: pill → spine */}
-          <div style={{ width: 16, marginTop: MM_MID, height: 1.5, backgroundColor: MM_LINE, flexShrink: 0 }} />
-          {/* Vertical spine + children */}
-          <div className="flex flex-col" style={{ gap: 5, borderLeft: `1.5px solid ${MM_LINE}` }}>
+      <div
+        ref={pillRef}
+        onMouseEnter={() => onHover(node.path)}
+      >
+        <MindMapPill node={node} isHovered={isHovered} isOnPath={isOnHoverPath} />
+      </div>
+      {totalSlots > 0 && (
+        <div style={{ position: 'relative' }}>
+          {/* SVG bezier curves */}
+          <svg
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: CURVE_W,
+              height: '100%',
+              overflow: 'visible',
+              pointerEvents: 'none',
+            }}
+          >
+            {curves.childMids.map((cy, i) => {
+              const child = shown[i]
+              const highlight = child ? childIsOnHoverPath(child) : false
+              return (
+                <path
+                  key={i}
+                  d={bezierD(0, curves.parentMid, CURVE_W, cy)}
+                  fill="none"
+                  stroke={highlight ? '#94A3B8' : '#E5E7EB'}
+                  strokeWidth={highlight ? 1.8 : 1}
+                  style={{ transition: 'stroke 0.25s ease, stroke-width 0.25s ease' }}
+                />
+              )
+            })}
+          </svg>
+          {/* Children */}
+          <div
+            ref={childrenRef}
+            className="flex flex-col"
+            style={{ gap: CHILD_GAP, paddingLeft: CURVE_W }}
+          >
             {shown.map(child => (
-              <div key={child.path} className="flex items-start">
-                <div style={{ width: 12, marginTop: MM_MID, height: 1.5, backgroundColor: MM_LINE, flexShrink: 0 }} />
-                <MindMapNode node={child} />
+              <div key={child.path}>
+                <MindMapBranch
+                  node={child}
+                  depth={depth + 1}
+                  hoveredPath={hoveredPath}
+                  onHover={onHover}
+                />
               </div>
             ))}
             {hidden > 0 && (
-              <div className="flex items-start">
-                <div style={{ width: 12, marginTop: MM_MID, height: 1.5, backgroundColor: MM_LINE, flexShrink: 0 }} />
+              <div data-pill>
                 <div
-                  className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-mono whitespace-nowrap select-none"
-                  style={{ backgroundColor: '#F8FAFC', border: '1px dashed #E2E8F0', color: '#94a3b8' }}
+                  className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-mono whitespace-nowrap select-none"
+                  style={{ backgroundColor: '#FAFAFC', border: '1px dashed #E5E7EB', color: '#9CA3AF' }}
                 >
                   +{hidden} more
                 </div>
@@ -228,9 +345,22 @@ function MindMapNode({ node }: { node: FileTreeNode }) {
 }
 
 function MindMapFileTree({ nodes }: { nodes: FileTreeNode[] }) {
+  const [hoveredPath, setHoveredPath] = useState<string | null>(null)
+  const compressed = useMemo(() => nodes.map(compressNode), [nodes])
   return (
-    <div className="flex flex-col gap-3 overflow-x-auto py-1 pb-2">
-      {nodes.map(compressNode).map(node => <MindMapNode key={node.path} node={node} />)}
+    <div
+      className="flex flex-col gap-4 overflow-x-auto py-2 pb-3"
+      onMouseLeave={() => setHoveredPath(null)}
+    >
+      {compressed.map(node => (
+        <MindMapBranch
+          key={node.path}
+          node={node}
+          depth={0}
+          hoveredPath={hoveredPath}
+          onHover={setHoveredPath}
+        />
+      ))}
     </div>
   )
 }
