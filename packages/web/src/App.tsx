@@ -6,6 +6,7 @@ import CodeReviewPage from './pages/CodeReviewPage'
 import HomePage from './pages/HomePage'
 import FormReviewPage from './pages/FormReviewPage'
 import SelectionPage from './pages/SelectionPage'
+import PreferencesPage from './pages/PreferencesPage'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -94,6 +95,7 @@ export default function App() {
         <Route path="/code-review/:id" element={<CodeReviewPage />} />
         <Route path="/form-review/:id" element={<FormReviewPage />} />
         <Route path="/selection/:id" element={<SelectionPage />} />
+        <Route path="/preferences" element={<PreferencesPage />} />
       </Routes>
     </BrowserRouter>
   )
