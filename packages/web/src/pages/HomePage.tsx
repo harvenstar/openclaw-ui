@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 interface SessionItem {
   id: string
@@ -12,11 +12,6 @@ interface SessionItem {
   command?: string
 }
 
-interface LearnedPreference {
-  description: string
-  reason: string
-  scope: string
-}
 
 function sessionPath(s: SessionItem): string {
   if (s.type === 'action_approval') return `/approval/${s.id}`
@@ -61,10 +56,10 @@ function riskBadge(risk: 'danger' | 'warning' | 'normal') {
 }
 
 export default function HomePage() {
+  const navigate = useNavigate()
   const [sessions, setSessions] = useState<SessionItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [preferences, setPreferences] = useState<LearnedPreference[]>([])
-  const [clearingPrefs, setClearingPrefs] = useState(false)
+  const [prefCount, setPrefCount] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/sessions')
@@ -74,16 +69,9 @@ export default function HomePage() {
 
     fetch('/api/preferences')
       .then(r => r.json())
-      .then(data => setPreferences(data.preferences ?? []))
+      .then(data => setPrefCount((data.preferences ?? []).length))
       .catch(() => {})
   }, [])
-
-  const clearPreferences = async () => {
-    setClearingPrefs(true)
-    await fetch('/api/preferences', { method: 'DELETE' }).catch(() => {})
-    setPreferences([])
-    setClearingPrefs(false)
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
@@ -139,42 +127,24 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Learned Preferences */}
-        <div className="mt-10">
-          <div className="flex items-center justify-between mb-3">
+        {/* Preferences disclosure row */}
+        <div className="mt-8 border-t border-gray-100 dark:border-zinc-800 pt-4">
+          <button
+            onClick={() => navigate('/preferences')}
+            className="w-full flex items-center justify-between py-2 group"
+          >
+            <span className="text-sm text-zinc-500 dark:text-slate-400 group-hover:text-zinc-700 dark:group-hover:text-slate-200 transition-colors">
+              Learned Preferences
+            </span>
             <div className="flex items-center gap-2">
-              <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase tracking-wider font-medium">Learned Preferences</p>
-              {preferences.length > 0 && (
-                <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-slate-500 font-medium">{preferences.length}</span>
+              {prefCount !== null && prefCount > 0 && (
+                <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 font-medium">
+                  {prefCount}
+                </span>
               )}
+              <span className="text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-500 dark:group-hover:text-zinc-400 transition-colors text-sm">›</span>
             </div>
-            {preferences.length > 0 && (
-              <button
-                onClick={clearPreferences}
-                disabled={clearingPrefs}
-                className="text-xs text-zinc-300 dark:text-zinc-600 hover:text-red-400 dark:hover:text-red-400 transition-colors"
-              >
-                Clear all
-              </button>
-            )}
-          </div>
-
-          {preferences.length === 0 ? (
-            <p className="text-sm text-zinc-400 dark:text-slate-500">
-              No preferences learned yet. When you delete draft paragraphs with a reason, AgentClick remembers your style.
-            </p>
-          ) : (
-            <div className="space-y-1.5">
-              {preferences.map((pref, i) => (
-                <div key={i} className="flex items-start gap-2.5 p-3 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg">
-                  <span className="text-xs px-1.5 py-0.5 rounded font-medium shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
-                    {pref.reason.replace(/_/g, ' ')}
-                  </span>
-                  <p className="text-xs text-zinc-500 dark:text-slate-400 leading-relaxed">{pref.description}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          </button>
         </div>
 
       </div>
