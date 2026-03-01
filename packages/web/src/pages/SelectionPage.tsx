@@ -67,43 +67,43 @@ export default function SelectionPage() {
   }
 
   if (error) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
       <p className="text-red-400 text-sm">Server not reachable — is AgentClick running?</p>
     </div>
   )
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <p className="text-zinc-400">Loading...</p>
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+      <p className="text-zinc-400 dark:text-slate-500">Loading...</p>
     </div>
   )
 
   if (!payload) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
       <p className="text-red-400">Session not found.</p>
     </div>
   )
 
   if (submitted) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
       <div className="text-center">
-        <p className="text-zinc-700 font-medium">Done. Your agent is continuing.</p>
+        <p className="text-zinc-700 dark:text-slate-200 font-medium">Done. Your agent is continuing.</p>
         {callbackFailed && (
           <p className="text-amber-500 text-xs mt-2">Note: agent may not have received the callback.</p>
         )}
-        <p className="text-zinc-400 text-sm mt-1">You can close this tab.</p>
+        <p className="text-zinc-400 dark:text-slate-500 text-sm mt-1">You can close this tab.</p>
       </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <div className="max-w-2xl mx-auto py-10 px-4">
         <div className="mb-6">
-          <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Selection Review</p>
-          <h1 className="text-xl font-semibold text-zinc-900">{payload.question}</h1>
+          <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase tracking-wider mb-1">Selection Review</p>
+          <h1 className="text-xl font-semibold text-zinc-900 dark:text-slate-100">{payload.question}</h1>
           {payload.description && (
-            <p className="text-sm text-zinc-500 mt-2">{payload.description}</p>
+            <p className="text-sm text-zinc-500 dark:text-slate-400 mt-2">{payload.description}</p>
           )}
         </div>
 
@@ -117,18 +117,18 @@ export default function SelectionPage() {
                 onClick={() => toggleSelection(option.id)}
                 className={`w-full text-left p-4 border rounded-lg transition-colors ${
                   selected
-                    ? 'border-blue-200 bg-blue-50'
-                    : 'border-gray-100 bg-white hover:border-gray-200'
+                    ? 'border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-950'
+                    : 'border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-gray-200 dark:hover:border-slate-600'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <p className="text-sm font-medium text-zinc-800">{option.title}</p>
+                  <p className="text-sm font-medium text-zinc-800 dark:text-slate-200">{option.title}</p>
                   {option.recommended && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-600">Recommended</span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400">Recommended</span>
                   )}
                 </div>
                 {option.detail && (
-                  <p className="text-xs text-zinc-500">{option.detail}</p>
+                  <p className="text-xs text-zinc-500 dark:text-slate-400">{option.detail}</p>
                 )}
               </button>
             )
@@ -137,7 +137,7 @@ export default function SelectionPage() {
 
         <div className="mb-4">
           <textarea
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 text-zinc-700 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full text-sm border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-800 placeholder-zinc-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             rows={3}
             placeholder="Add a note (optional)"
             value={note}
@@ -149,7 +149,7 @@ export default function SelectionPage() {
           <button
             onClick={submit}
             disabled={submitting || selectedIds.length === 0}
-            className={`flex-1 bg-zinc-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-zinc-700 transition-colors ${
+            className={`flex-1 bg-zinc-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium py-2.5 rounded-lg hover:bg-zinc-700 dark:hover:bg-slate-200 transition-colors ${
               submitting || selectedIds.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
