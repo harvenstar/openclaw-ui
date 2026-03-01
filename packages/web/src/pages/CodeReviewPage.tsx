@@ -213,7 +213,6 @@ function MindMapPill({ node, isHovered, isOnPath, isExpanded, hasDiffDescendant:
           transition: 'all 0.2s ease',
         }}
       >
-        <span className="text-[9px] opacity-50">{STATUS_STYLE[node.affected.status].label}</span>
         <span>{node.name}</span>
       </div>
     )
