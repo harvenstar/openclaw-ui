@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -87,16 +87,17 @@ function buildFileTree(affectedFiles: AffectedFile[]): FileTreeNode[] {
       currentPath = currentPath ? `${currentPath}/${part}` : part
       const isLeaf = i === parts.length - 1
 
-      if (!current.has(part)) {
-        current.set(part, {
+      let node = current.get(part)
+      if (!node) {
+        node = {
           name: part,
           path: currentPath,
           type: isLeaf ? 'file' : 'dir',
           affected: isLeaf ? af : undefined,
           children: isLeaf ? undefined : new Map(),
-        })
+        }
+        current.set(part, node)
       }
-      const node = current.get(part)!
       if (!isLeaf) {
         if (!node.children) node.children = new Map()
         current = node.children
@@ -127,79 +128,109 @@ function buildFileTree(affectedFiles: AffectedFile[]): FileTreeNode[] {
   return toArray(root)
 }
 
-// ─── File Tree component ──────────────────────────────────────────────────────
+// ─── Mind-map file tree ───────────────────────────────────────────────────────
 
-const MAX_COLLAPSED_SIBLINGS = 2  // show this many non-affected siblings before "..."
+const MM_LINE = '#CBD5E1'
+const MM_MID  = 11  // px from top of pill to its vertical centre (for connector alignment)
 
-function FileTree({ nodes, level }: { nodes: FileTreeNode[]; level: number }) {
-  const [expandedDirs, setExpandedDirs] = useState<Record<string, boolean>>({})
+const STATUS_PILL: Record<AffectedFile['status'], { bg: string; border: string; text: string; label: string }> = {
+  added:    { bg: '#DCFCE7', border: '#86EFAC', text: '#166534', label: 'A' },
+  modified: { bg: '#DBEAFE', border: '#93C5FD', text: '#1E40AF', label: 'M' },
+  deleted:  { bg: '#FEE2E2', border: '#FCA5A5', text: '#991B1B', label: 'D' },
+  renamed:  { bg: '#FEF3C7', border: '#FDE68A', text: '#92400E', label: 'R' },
+}
 
-  const toggle = (path: string) =>
-    setExpandedDirs(s => ({ ...s, [path]: !(s[path] ?? true) }))
+// Compress single-child-dir chains: src/ → api/ (only on-path dir, no on-path files) → src/api/
+function compressNode(node: FileTreeNode): FileTreeNode {
+  if (node.type !== 'dir' || !node.children) return node
+  const children = node.children.map(compressNode)
+  const onPathDirs  = children.filter(c => c.type === 'dir'  && c.onPath)
+  const onPathFiles = children.filter(c => c.type === 'file' && c.onPath)
+  if (onPathDirs.length === 1 && onPathFiles.length === 0) {
+    const only = onPathDirs[0]
+    return compressNode({ ...node, name: `${node.name}/${only.name}`, path: only.path, children: only.children })
+  }
+  return { ...node, children }
+}
 
-  // Separate on-path nodes from off-path siblings
-  const onPath = nodes.filter(n => n.onPath)
-  const offPath = nodes.filter(n => !n.onPath)
-  const visibleOffPath = offPath.slice(0, MAX_COLLAPSED_SIBLINGS)
-  const hiddenCount = offPath.length - visibleOffPath.length
-
-  const renderNode = (node: FileTreeNode) => {
-    if (node.type === 'file') {
-      const isAffected = !!node.affected
-      return (
-        <div
-          key={node.path}
-          className="flex items-center gap-2 py-1 px-2 rounded"
-          style={isAffected ? { backgroundColor: '#F1FAEE' } : {}}
-        >
-          <span className="text-zinc-400 text-xs select-none">{'  '.repeat(level)}{'└─'}</span>
-          {node.affected && <StatusBadge status={node.affected.status} />}
-          <span
-            className={`text-sm font-mono ${isAffected ? 'font-semibold' : 'text-zinc-500'}`}
-            style={isAffected ? { color: '#1D3557' } : {}}
-          >
-            {node.name}
-          </span>
-          {node.affected?.status === 'renamed' && node.affected.oldPath && (
-            <span className="text-xs text-zinc-400">← {node.affected.oldPath.split('/').pop()}</span>
-          )}
-        </div>
-      )
-    }
-
-    // Directory
-    const isExpanded = expandedDirs[node.path] ?? true
-    const isOnPath = node.onPath
+function MindMapPill({ node }: { node: FileTreeNode }) {
+  if (node.type === 'file' && node.affected) {
+    const s = STATUS_PILL[node.affected.status]
     return (
-      <div key={node.path}>
-        <button
-          type="button"
-          onClick={() => toggle(node.path)}
-          className="w-full text-left flex items-center gap-2 py-1 px-2 rounded hover:bg-gray-50 transition-colors"
-        >
-          <span className="text-zinc-400 text-xs select-none">{'  '.repeat(level)}{'├─'}</span>
-          <span className="text-sm font-mono" style={{ color: isOnPath ? '#1D3557' : '#94a3b8' }}>
-            {node.name}/
-          </span>
-          <span className="text-xs text-zinc-400">{isExpanded ? '▾' : '▸'}</span>
-        </button>
-        {isExpanded && node.children && node.children.length > 0 && (
-          <FileTree nodes={node.children} level={level + 1} />
+      <div
+        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-mono font-semibold whitespace-nowrap select-none"
+        style={{ backgroundColor: s.bg, border: `1.5px solid ${s.border}`, color: s.text }}
+      >
+        <span className="text-[10px] font-bold opacity-80">{s.label}</span>
+        <span>{node.name}</span>
+        {node.affected.status === 'renamed' && node.affected.oldPath && (
+          <span className="font-normal opacity-60 text-[10px]">← {node.affected.oldPath.split('/').pop()}</span>
         )}
       </div>
     )
   }
+  const dimmed = !node.onPath
+  return (
+    <div
+      className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-mono whitespace-nowrap select-none"
+      style={{
+        backgroundColor: dimmed ? '#F8FAFC' : (node.type === 'dir' ? '#F1F5F9' : '#F8FAFC'),
+        border: `1px solid ${dimmed ? '#F1F5F9' : '#E2E8F0'}`,
+        color: dimmed ? '#94a3b8' : (node.type === 'dir' ? '#334155' : '#64748b'),
+        fontWeight: node.type === 'dir' ? 600 : 400,
+      }}
+    >
+      {node.type === 'dir' ? `${node.name}/` : node.name}
+    </div>
+  )
+}
+
+function MindMapNode({ node }: { node: FileTreeNode }) {
+  const children = node.children ?? []
+  const onPath  = children.filter(c => c.onPath)
+  const offPath = children.filter(c => !c.onPath)
+  // Show all on-path children; show at most 1 off-path child, hide the rest
+  const shown  = [...onPath, ...offPath.slice(0, 1)]
+  const hidden = offPath.length - Math.min(offPath.length, 1)
+  const hasChildren = shown.length > 0 || hidden > 0
 
   return (
-    <div>
-      {onPath.map(renderNode)}
-      {visibleOffPath.map(renderNode)}
-      {hiddenCount > 0 && (
-        <div className="flex items-center gap-2 py-1 px-2">
-          <span className="text-zinc-400 text-xs select-none">{'  '.repeat(level)}{'└─'}</span>
-          <span className="text-xs text-zinc-400">… {hiddenCount} more {hiddenCount === 1 ? 'item' : 'items'}</span>
+    <div className="flex items-start">
+      <MindMapPill node={node} />
+      {hasChildren && (
+        <div className="flex items-start" style={{ flexShrink: 0 }}>
+          {/* Horizontal arm: pill → spine */}
+          <div style={{ width: 16, marginTop: MM_MID, height: 1.5, backgroundColor: MM_LINE, flexShrink: 0 }} />
+          {/* Vertical spine + children */}
+          <div className="flex flex-col" style={{ gap: 5, borderLeft: `1.5px solid ${MM_LINE}` }}>
+            {shown.map(child => (
+              <div key={child.path} className="flex items-start">
+                <div style={{ width: 12, marginTop: MM_MID, height: 1.5, backgroundColor: MM_LINE, flexShrink: 0 }} />
+                <MindMapNode node={child} />
+              </div>
+            ))}
+            {hidden > 0 && (
+              <div className="flex items-start">
+                <div style={{ width: 12, marginTop: MM_MID, height: 1.5, backgroundColor: MM_LINE, flexShrink: 0 }} />
+                <div
+                  className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-mono whitespace-nowrap select-none"
+                  style={{ backgroundColor: '#F8FAFC', border: '1px dashed #E2E8F0', color: '#94a3b8' }}
+                >
+                  +{hidden} more
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function MindMapFileTree({ nodes }: { nodes: FileTreeNode[] }) {
+  return (
+    <div className="flex flex-col gap-3 overflow-x-auto py-1 pb-2">
+      {nodes.map(compressNode).map(node => <MindMapNode key={node.path} node={node} />)}
     </div>
   )
 }
@@ -231,40 +262,39 @@ function parseDiff(diff: string): DiffLine[] {
     } else if (line.startsWith('-') && !line.startsWith('---')) {
       oldNo++
       result.push({ type: 'removed', content: line.slice(1), oldNo })
-    } else if (line.startsWith(' ') || (!line.startsWith('\\') && !line.startsWith('diff') && !line.startsWith('index') && !line.startsWith('---') && !line.startsWith('+++') && line.length > 0)) {
+    } else if (line.startsWith(' ')) {
       oldNo++; newNo++
-      result.push({ type: 'context', content: line.startsWith(' ') ? line.slice(1) : line, oldNo, newNo })
+      result.push({ type: 'context', content: line.slice(1), oldNo, newNo })
     }
   }
   return result
 }
 
+function diffLineStyle(type: DiffLine['type']): React.CSSProperties {
+  if (type === 'added')   return { backgroundColor: '#E6F4F1', borderLeft: '3px solid #2A9D8F' }
+  if (type === 'removed') return { backgroundColor: '#FEECEE', borderLeft: '3px solid #E63946' }
+  if (type === 'hunk')    return { backgroundColor: '#EBF4FA', borderLeft: '3px solid #A8DADC' }
+  return {}
+}
+
+function diffLineColor(type: DiffLine['type']): string {
+  if (type === 'added')   return '#1A6B5E'
+  if (type === 'removed') return '#9B2335'
+  if (type === 'hunk')    return '#457B9D'
+  return '#374151'
+}
+
+function diffPrefix(type: DiffLine['type']): string {
+  if (type === 'added')   return '+'
+  if (type === 'removed') return '−'
+  return ' '
+}
+
 function DiffViewer({ file }: { file: AffectedFile }) {
   const [collapsed, setCollapsed] = useState(false)
+  const diffLines = useMemo(() => file.diff ? parseDiff(file.diff) : [], [file.diff])
 
   if (!file.diff) return null
-
-  const diffLines = parseDiff(file.diff)
-
-  const lineStyle = (type: DiffLine['type']): React.CSSProperties => {
-    if (type === 'added')   return { backgroundColor: '#E6F4F1', borderLeft: '3px solid #2A9D8F' }
-    if (type === 'removed') return { backgroundColor: '#FEECEE', borderLeft: '3px solid #E63946' }
-    if (type === 'hunk')    return { backgroundColor: '#EBF4FA', borderLeft: '3px solid #A8DADC' }
-    return {}
-  }
-
-  const lineColor = (type: DiffLine['type']) => {
-    if (type === 'added')   return '#1A6B5E'
-    if (type === 'removed') return '#9B2335'
-    if (type === 'hunk')    return '#457B9D'
-    return '#374151'
-  }
-
-  const prefix = (type: DiffLine['type']) => {
-    if (type === 'added')   return '+'
-    if (type === 'removed') return '−'
-    return ' '
-  }
 
   return (
     <div className="border border-gray-100 rounded-lg overflow-hidden mb-4">
@@ -290,7 +320,7 @@ function DiffViewer({ file }: { file: AffectedFile }) {
           <table className="w-full text-xs font-mono border-collapse">
             <tbody>
               {diffLines.map((line, i) => (
-                <tr key={i} style={lineStyle(line.type)}>
+                <tr key={i} style={diffLineStyle(line.type)}>
                   {/* Old line number */}
                   <td
                     className="text-right px-2 py-0.5 select-none w-10 shrink-0"
@@ -308,16 +338,16 @@ function DiffViewer({ file }: { file: AffectedFile }) {
                   {/* +/- prefix */}
                   <td
                     className="px-2 py-0.5 select-none w-4 text-center shrink-0"
-                    style={{ color: lineColor(line.type), fontWeight: line.type !== 'context' ? 700 : 400 }}
+                    style={{ color: diffLineColor(line.type), fontWeight: line.type !== 'context' ? 700 : 400 }}
                   >
-                    {line.type !== 'context' ? prefix(line.type) : ''}
+                    {line.type !== 'context' ? diffPrefix(line.type) : ''}
                   </td>
                   {/* Content */}
                   <td
                     className="px-2 py-0.5 whitespace-pre w-full"
-                    style={{ color: lineColor(line.type) }}
+                    style={{ color: diffLineColor(line.type) }}
                   >
-                    {line.type === 'hunk' ? line.content : line.content}
+                    {line.content}
                   </td>
                 </tr>
               ))}
@@ -348,6 +378,16 @@ export default function CodeReviewPage() {
       .then(data => { setPayload(data.payload as CodePayload); setLoading(false) })
       .catch(() => { setError(true); setLoading(false) })
   }, [id])
+
+  // Normalise: prefer affectedFiles, fall back to legacy files[] — must be before early returns (Rules of Hooks)
+  const affectedFiles = useMemo<AffectedFile[]>(
+    () => payload
+      ? (payload.affectedFiles ?? (payload.files ?? []).map(f => ({ path: f, status: 'modified' as const })))
+      : [],
+    [payload]
+  )
+  const fileTree = useMemo(() => affectedFiles.length > 0 ? buildFileTree(affectedFiles) : [], [affectedFiles])
+  const filesWithDiff = useMemo(() => affectedFiles.filter(f => f.diff), [affectedFiles])
 
   const submit = async (approved: boolean) => {
     setSubmitting(true)
@@ -390,13 +430,6 @@ export default function CodeReviewPage() {
     </div>
   )
 
-  // Normalise: prefer affectedFiles, fall back to legacy files[]
-  const affectedFiles: AffectedFile[] = payload.affectedFiles
-    ?? (payload.files ?? []).map(f => ({ path: f, status: 'modified' as const }))
-
-  const fileTree = affectedFiles.length > 0 ? buildFileTree(affectedFiles) : []
-  const filesWithDiff = affectedFiles.filter(f => f.diff)
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto py-10 px-4">
@@ -424,20 +457,14 @@ export default function CodeReviewPage() {
           <p className="text-sm text-zinc-700 leading-relaxed">{payload.explanation}</p>
         </div>
 
-        {/* Affected files — tree + legend */}
+        {/* Affected files — mind-map */}
         {fileTree.length > 0 && (
           <div className="mb-5 bg-white border border-gray-100 rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
+            <div className="px-4 py-2.5 border-b border-gray-50">
               <p className="text-xs text-zinc-400 uppercase tracking-wider font-medium">Affected Files</p>
-              <div className="flex items-center gap-3 text-xs text-zinc-400">
-                <span><span className="font-bold" style={{ color: '#2A9D8F' }}>A</span> added</span>
-                <span><span className="font-bold" style={{ color: '#457B9D' }}>M</span> modified</span>
-                <span><span className="font-bold" style={{ color: '#E63946' }}>D</span> deleted</span>
-                <span><span className="font-bold" style={{ color: '#E2A12A' }}>R</span> renamed</span>
-              </div>
             </div>
-            <div className="px-3 py-3">
-              <FileTree nodes={fileTree} level={0} />
+            <div className="px-4 py-4">
+              <MindMapFileTree nodes={fileTree} />
             </div>
           </div>
         )}

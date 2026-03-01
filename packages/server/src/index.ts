@@ -142,7 +142,7 @@ app.get('/api/sessions/:id/wait', async (req, res) => {
 })
 
 // Agent updates session payload after rewriting
-app.put('/api/sessions/:id/payload', async (req, res) => {
+app.put('/api/sessions/:id/payload', (req, res) => {
   const session = getSession(req.params.id)
   if (!session) return res.status(404).json({ error: 'Session not found' })
   if (session.status !== 'rewriting') return res.status(400).json({ error: 'Session is not in rewriting state' })
@@ -153,7 +153,7 @@ app.put('/api/sessions/:id/payload', async (req, res) => {
   const newRevision = updated?.revision ?? session.revision + 1
   console.log(`[agentclick] Session ${session.id} payload updated, back to pending (revision=${newRevision})`)
 
-  // Notify main agent that sub-agent completed a rewrite round
+  // Notify main agent that sub-agent completed a rewrite round (fire-and-forget)
   if (session.sessionKey) {
     const priorResult = session.result as Record<string, unknown> | undefined
     const actions = (priorResult?.actions ?? []) as Array<{ type: string; paragraphId: string; reason?: string; instruction?: string }>
@@ -167,23 +167,9 @@ app.put('/api/sessions/:id/payload', async (req, res) => {
     if (userIntention) lines.push(`- User intention: "${userIntention}"`)
     lines.push('- Draft updated. Waiting for user to review.')
 
-    try {
-      await fetch(OPENCLAW_WEBHOOK, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENCLAW_TOKEN || ''}`
-        },
-        body: JSON.stringify({
-          message: lines.join('\n'),
-          sessionKey: session.sessionKey,
-          deliver: false  // progress update, not a final delivery
-        })
-      })
-      console.log(`[agentclick] Rewrite progress notified to main agent (round ${newRevision})`)
-    } catch (err) {
-      console.warn(`[agentclick] Failed to notify main agent of rewrite progress:`, err)
-    }
+    callWebhook({ message: lines.join('\n'), sessionKey: session.sessionKey, deliver: false })
+      .then(() => console.log(`[agentclick] Rewrite progress notified to main agent (round ${newRevision})`))
+      .catch(err => console.warn(`[agentclick] Failed to notify main agent of rewrite progress:`, err))
   }
 
   res.json({ ok: true, revision: newRevision })
@@ -217,18 +203,7 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
   if (session.sessionKey) {
     try {
       const summary = buildActionSummary(req.body)
-      await fetch(OPENCLAW_WEBHOOK, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENCLAW_TOKEN || ''}`
-        },
-        body: JSON.stringify({
-          message: summary,
-          sessionKey: session.sessionKey,
-          deliver: true
-        })
-      })
+      await callWebhook({ message: summary, sessionKey: session.sessionKey, deliver: true })
       console.log(`[agentclick] Callback sent to OpenClaw`)
     } catch (err) {
       callbackFailed = true
@@ -239,6 +214,17 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
 
   res.json({ ok: true, callbackFailed, callbackError })
 })
+
+async function callWebhook(body: Record<string, unknown>): Promise<void> {
+  await fetch(OPENCLAW_WEBHOOK, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.OPENCLAW_TOKEN || ''}`,
+    },
+    body: JSON.stringify(body),
+  })
+}
 
 function buildActionSummary(result: Record<string, unknown>): string {
   // If result has approved field, it's an action_approval or code_review
