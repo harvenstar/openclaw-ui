@@ -55,22 +55,22 @@ function ThemeToggle() {
     <div ref={ref} className="fixed top-3 right-3 z-50">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 shadow-sm transition-colors"
+        className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 shadow-sm transition-colors"
         title="Theme"
       >
         {ICONS[theme]}
       </button>
 
       {open && (
-        <div className="absolute top-10 right-0 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-md overflow-hidden min-w-[100px]">
+        <div className="absolute top-10 right-0 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-md overflow-hidden min-w-[100px]">
           {OPTIONS.map(opt => (
             <button
               key={opt}
               onClick={() => { setTheme(opt); setOpen(false) }}
               className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors
                 ${theme === opt
-                  ? 'bg-gray-100 dark:bg-slate-700 text-zinc-900 dark:text-slate-100 font-medium'
-                  : 'text-zinc-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
+                  ? 'bg-gray-100 dark:bg-zinc-800 text-zinc-900 dark:text-slate-100 font-medium'
+                  : 'text-zinc-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
                 }`}
             >
               <span>{ICONS[opt]}</span>

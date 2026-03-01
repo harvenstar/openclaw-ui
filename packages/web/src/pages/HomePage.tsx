@@ -69,7 +69,7 @@ export default function HomePage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
       <div className="max-w-2xl mx-auto py-10 px-4">
 
         <div className="mb-6">
@@ -95,7 +95,7 @@ export default function HomePage() {
                 <Link
                   key={s.id}
                   to={sessionPath(s)}
-                  className={`flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg hover:border-gray-200 dark:hover:border-slate-600 transition-colors ${borderClass}`}
+                  className={`flex items-center justify-between p-4 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg hover:border-gray-200 dark:hover:border-zinc-700 transition-colors ${borderClass}`}
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-zinc-800 dark:text-slate-200 truncate">
@@ -109,7 +109,7 @@ export default function HomePage() {
                     {riskBadge(risk)}
                     <span className={`text-xs px-2 py-0.5 rounded font-medium ${
                       s.status === 'completed'
-                        ? 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400'
+                        ? 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-500'
                         : 'bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400'
                     }`}>
                       {s.status}

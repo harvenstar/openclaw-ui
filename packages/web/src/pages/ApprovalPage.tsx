@@ -9,7 +9,7 @@ interface ApprovalPayload {
 
 function RiskBadge({ risk }: { risk: 'low' | 'medium' | 'high' }) {
   const styles: Record<string, string> = {
-    low: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800',
+    low: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-500 border border-green-200 dark:border-green-800',
     medium: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800',
     high: 'bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800',
   }
@@ -58,25 +58,25 @@ export default function ApprovalPage() {
   }
 
   if (error) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-red-400 text-sm">Server not reachable — is AgentClick running?</p>
     </div>
   )
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-zinc-400 dark:text-slate-500">Loading...</p>
     </div>
   )
 
   if (!payload) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-red-400">Session not found.</p>
     </div>
   )
 
   if (submitted) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <div className="text-center">
         <p className="text-zinc-700 dark:text-slate-200 font-medium">Done. Your agent is continuing.</p>
         {callbackFailed && (
@@ -88,7 +88,7 @@ export default function ApprovalPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
       <div className="max-w-2xl mx-auto py-10 px-4">
 
         {/* Header */}
@@ -101,14 +101,14 @@ export default function ApprovalPage() {
         </div>
 
         {/* Detail */}
-        <div className="mb-6 p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg">
+        <div className="mb-6 p-4 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg">
           <p className="text-sm text-zinc-700 dark:text-slate-300 leading-relaxed">{payload.description}</p>
         </div>
 
         {/* Note */}
         <div className="mb-6">
           <textarea
-            className="w-full text-sm border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-800 placeholder-zinc-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-700 dark:text-slate-300 bg-white dark:bg-zinc-900 placeholder-zinc-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             rows={3}
             placeholder="Add a note (optional)"
             value={note}

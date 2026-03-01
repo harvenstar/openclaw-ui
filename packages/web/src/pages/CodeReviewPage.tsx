@@ -32,7 +32,7 @@ interface FileTreeNode {
 
 function RiskBadge({ risk }: { risk: 'low' | 'medium' | 'high' }) {
   const styles: Record<string, string> = {
-    low:    'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800',
+    low:    'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-500 border border-green-200 dark:border-green-800',
     medium: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800',
     high:   'bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800',
   }
@@ -495,7 +495,7 @@ function DiffViewer({ file }: { file: AffectedFile }) {
   if (!file.diff) return null
 
   return (
-    <div className="border border-gray-100 dark:border-slate-700 rounded-lg overflow-hidden mb-4">
+    <div className="border border-gray-100 dark:border-zinc-800 rounded-lg overflow-hidden mb-4">
       {/* File header */}
       <div
         className="flex items-center justify-between px-3 py-2 cursor-pointer select-none"
@@ -605,22 +605,22 @@ export default function CodeReviewPage() {
   }
 
   if (error) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-red-400 text-sm">Server not reachable — is AgentClick running?</p>
     </div>
   )
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-zinc-400 dark:text-slate-500">Loading...</p>
     </div>
   )
   if (!payload) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-red-400">Session not found.</p>
     </div>
   )
   if (submitted) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <div className="text-center">
         <p className="text-zinc-700 dark:text-slate-200 font-medium">Done. Your agent is continuing.</p>
         {callbackFailed && <p className="text-amber-500 text-xs mt-2">Note: agent may not have received the callback.</p>}
@@ -630,7 +630,7 @@ export default function CodeReviewPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
       <div className="max-w-3xl mx-auto py-10 px-4">
 
         {/* Header */}
@@ -643,7 +643,7 @@ export default function CodeReviewPage() {
         </div>
 
         {/* Command */}
-        <div className="mb-4 rounded-lg overflow-hidden border border-gray-100 dark:border-slate-700">
+        <div className="mb-4 rounded-lg overflow-hidden border border-gray-100 dark:border-zinc-800">
           <div className="px-3 py-2" style={{ backgroundColor: 'var(--c-cmd-header)' }}>
             <p className="text-xs font-medium" style={{ color: 'var(--c-cmd-header-text)' }}>Command</p>
           </div>
@@ -651,15 +651,15 @@ export default function CodeReviewPage() {
         </div>
 
         {/* Explanation */}
-        <div className="mb-5 p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg">
+        <div className="mb-5 p-4 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg">
           <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase tracking-wider mb-1 font-medium">What this does</p>
           <p className="text-sm text-zinc-700 dark:text-slate-300 leading-relaxed">{payload.explanation}</p>
         </div>
 
         {/* Affected files — mind-map */}
         {fileTree.length > 0 && (
-          <div className="mb-5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-gray-50 dark:border-slate-700">
+          <div className="mb-5 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-gray-50 dark:border-zinc-800">
               <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase tracking-wider font-medium">Affected Files</p>
             </div>
             <div className="px-4 py-4">
@@ -696,7 +696,7 @@ export default function CodeReviewPage() {
         {/* Note */}
         <div className="mb-6">
           <textarea
-            className="w-full text-sm border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-800 placeholder-zinc-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent resize-none"
+            className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-700 dark:text-slate-300 bg-white dark:bg-zinc-900 placeholder-zinc-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent resize-none"
             rows={3}
             placeholder="Add a note or modified command (optional)"
             value={note}

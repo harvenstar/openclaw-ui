@@ -67,25 +67,25 @@ export default function SelectionPage() {
   }
 
   if (error) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-red-400 text-sm">Server not reachable — is AgentClick running?</p>
     </div>
   )
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-zinc-400 dark:text-slate-500">Loading...</p>
     </div>
   )
 
   if (!payload) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-red-400">Session not found.</p>
     </div>
   )
 
   if (submitted) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <div className="text-center">
         <p className="text-zinc-700 dark:text-slate-200 font-medium">Done. Your agent is continuing.</p>
         {callbackFailed && (
@@ -97,7 +97,7 @@ export default function SelectionPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
       <div className="max-w-2xl mx-auto py-10 px-4">
         <div className="mb-6">
           <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase tracking-wider mb-1">Selection Review</p>
@@ -118,7 +118,7 @@ export default function SelectionPage() {
                 className={`w-full text-left p-4 border rounded-lg transition-colors ${
                   selected
                     ? 'border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-950'
-                    : 'border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-gray-200 dark:hover:border-slate-600'
+                    : 'border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-gray-200 dark:hover:border-zinc-700'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -137,7 +137,7 @@ export default function SelectionPage() {
 
         <div className="mb-4">
           <textarea
-            className="w-full text-sm border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-800 placeholder-zinc-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-700 dark:text-slate-300 bg-white dark:bg-zinc-900 placeholder-zinc-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             rows={3}
             placeholder="Add a note (optional)"
             value={note}

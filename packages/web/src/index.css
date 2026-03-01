@@ -53,51 +53,51 @@
 
 .dark {
   color-scheme: dark;
-  --c-bg: #0F172A;
-  --c-surface: #1E293B;
-  --c-border: #1E293B;
-  --c-border-md: #334155;
-  --c-navy: #A8DADC;
+  --c-bg: #0D0D0D;
+  --c-surface: #1C1C1E;
+  --c-border: #1C1C1E;
+  --c-border-md: #38383A;
+  --c-navy: #E5E5EA;
   --c-teal: #2A9D8F;
-  --c-red: #E63946;
-  --c-blue: #7DB3D0;
-  --c-accent: #457B9D;
-  --c-text: #F1FAEE;
-  --c-text-muted: #94A3B8;
-  --c-text-subtle: #64748B;
-  --c-cmd-header: #0F172A;
+  --c-red: #FF453A;
+  --c-blue: #0A84FF;
+  --c-accent: #6C6C70;
+  --c-text: #FFFFFF;
+  --c-text-muted: #98989E;
+  --c-text-subtle: #636366;
+  --c-cmd-header: #000000;
   --c-cmd-header-text: #A8DADC;
-  --c-file-highlight: #1A3A2E;
-  --c-diff-add: #1A3A2E;
+  --c-file-highlight: #1C2B22;
+  --c-diff-add: #1C2B22;
   --c-diff-add-border: #2A9D8F;
-  --c-diff-remove: #3A1A1E;
-  --c-diff-remove-border: #E63946;
-  --c-diff-hunk: #1A2A3A;
-  --c-diff-hunk-border: #457B9D;
-  --c-file-header: #1E293B;
-  --c-status-m-bg: #1A2A3A;
-  --c-status-m-color: #7DB3D0;
-  --c-status-a-bg: #1A3A2E;
-  --c-status-a-color: #2A9D8F;
-  --c-status-d-bg: #3A1A1E;
-  --c-status-d-color: #E63946;
-  --c-status-r-bg: #2A2010;
-  --c-status-r-color: #E2A12A;
+  --c-diff-remove: #2B1C1C;
+  --c-diff-remove-border: #FF453A;
+  --c-diff-hunk: #1C2030;
+  --c-diff-hunk-border: #0A84FF;
+  --c-file-header: #1C1C1E;
+  --c-status-m-bg: #1C2030;
+  --c-status-m-color: #0A84FF;
+  --c-status-a-bg: #1C2B22;
+  --c-status-a-color: #30D158;
+  --c-status-d-bg: #2B1C1C;
+  --c-status-d-color: #FF453A;
+  --c-status-r-bg: #2B2218;
+  --c-status-r-color: #FF9F0A;
 
   /* Mind-map pill status */
-  --c-pill-a-bg: #1A3A2E; --c-pill-a-border: #2A9D8F; --c-pill-a-text: #6EE7B7;
-  --c-pill-m-bg: #1E3A5F; --c-pill-m-border: #60A5FA; --c-pill-m-text: #93C5FD;
-  --c-pill-d-bg: #3A1A1E; --c-pill-d-border: #F87171; --c-pill-d-text: #FCA5A5;
-  --c-pill-r-bg: #2A2010; --c-pill-r-border: #F59E0B; --c-pill-r-text: #FCD34D;
+  --c-pill-a-bg: #1C2B22; --c-pill-a-border: #1D5C38; --c-pill-a-text: #30D158;
+  --c-pill-m-bg: #001933; --c-pill-m-border: #003A80; --c-pill-m-text: #0A84FF;
+  --c-pill-d-bg: #2B1C1C; --c-pill-d-border: #6B2020; --c-pill-d-text: #FF453A;
+  --c-pill-r-bg: #2B2218; --c-pill-r-border: #6B4D10; --c-pill-r-text: #FF9F0A;
 
   /* Mind-map dir pills */
-  --c-dir-diff-bg: #1E3A5F; --c-dir-diff-border: #3B82F6; --c-dir-diff-text: #93C5FD;
-  --c-dir-active-bg: #334155; --c-dir-active-border: #475569; --c-dir-active-text: #94A3B8;
-  --c-dir-neutral-bg: #1E293B; --c-dir-neutral-border: #334155; --c-dir-neutral-text: #64748B;
+  --c-dir-diff-bg: #001933; --c-dir-diff-border: #003A80; --c-dir-diff-text: #0A84FF;
+  --c-dir-active-bg: #2C2C2E; --c-dir-active-border: #3A3A3C; --c-dir-active-text: #98989E;
+  --c-dir-neutral-bg: #1C1C1E; --c-dir-neutral-border: #2C2C2E; --c-dir-neutral-text: #636366;
 
   /* Bezier curves */
-  --c-curve-hi: #475569;
-  --c-curve-lo: #334155;
+  --c-curve-hi: #636366;
+  --c-curve-lo: #2C2C2E;
 }
 
 body {

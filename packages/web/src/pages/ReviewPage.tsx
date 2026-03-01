@@ -75,10 +75,10 @@ function reasonLabel(key: string): string {
 }
 
 function categoryBadge(category: string) {
-  if (category === 'Personal') return 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400'
+  if (category === 'Personal') return 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-500'
   if (category === 'ADS') return 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400'
-  if (category === 'Work') return 'bg-zinc-100 dark:bg-slate-700 text-zinc-600 dark:text-slate-300'
-  return 'bg-zinc-100 dark:bg-slate-700 text-zinc-500 dark:text-slate-400'
+  if (category === 'Work') return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-slate-300'
+  return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-slate-400'
 }
 
 function formatTimestamp(ts: number): string {
@@ -265,25 +265,25 @@ export default function ReviewPage() {
   }
 
   if (error) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-red-400 text-sm">Server not reachable — is AgentClick running?</p>
     </div>
   )
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-gray-400 dark:text-slate-500">Loading draft...</p>
     </div>
   )
 
   if (!payload) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-red-400">Session not found.</p>
     </div>
   )
 
   if (submitted) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <div className="text-center">
         <p className="text-gray-700 dark:text-slate-200 font-medium">Done. Your agent is continuing.</p>
         {callbackFailed && (
@@ -347,7 +347,7 @@ export default function ReviewPage() {
             <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm text-gray-500 dark:text-slate-400 mb-2 whitespace-pre-wrap">{p.content}</p>
               <input
-                className="w-full text-sm border border-blue-200 dark:border-blue-700 rounded px-3 py-2 mb-2 bg-white dark:bg-slate-800 text-zinc-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="w-full text-sm border border-blue-200 dark:border-blue-700 rounded px-3 py-2 mb-2 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 placeholder="How should it be rewritten? (e.g. more direct, no formalities)"
                 value={rewriteInput[p.id] || ''}
                 onChange={e => setRewriteInput(r => ({ ...r, [p.id]: e.target.value }))}
@@ -362,7 +362,7 @@ export default function ReviewPage() {
 
         return (
           <div key={p.id} className="space-y-1">
-            <div className="p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg">
+            <div className="p-4 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg">
               <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{p.content}</p>
             </div>
             <div className="flex justify-end gap-1">
@@ -380,9 +380,9 @@ export default function ReviewPage() {
       })
 
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex">
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex">
         {/* Left Panel — Inbox List */}
-        <div className="w-72 shrink-0 bg-white dark:bg-slate-800 border-r border-gray-100 dark:border-slate-700 overflow-y-auto">
+        <div className="w-72 shrink-0 bg-white dark:bg-zinc-900 border-r border-gray-100 dark:border-zinc-800 overflow-y-auto">
           {visibleEmails.length === 0 ? (
             <p className="text-sm text-zinc-400 dark:text-slate-500 p-4">No unread emails.</p>
           ) : (
@@ -391,10 +391,10 @@ export default function ReviewPage() {
               return (
                 <div
                   key={email.id}
-                  className={`p-4 cursor-pointer border-b border-gray-50 dark:border-slate-700 transition-colors ${
+                  className={`p-4 cursor-pointer border-b border-gray-50 dark:border-zinc-800 transition-colors ${
                     isSelected
                       ? 'border-l-2'
-                      : 'hover:bg-gray-50 dark:hover:bg-slate-700'
+                      : 'hover:bg-gray-50 dark:hover:bg-zinc-800'
                   }`}
                   style={isSelected ? { backgroundColor: 'var(--c-file-highlight)', borderLeftColor: 'var(--c-blue)' } : {}}
                   onClick={() => handleViewEmail(email)}
@@ -469,7 +469,7 @@ export default function ReviewPage() {
                   <span className="text-zinc-300 dark:text-slate-600">/</span>
                   <span className="text-sm text-zinc-600 dark:text-slate-300 font-medium">Summary</span>
                 </div>
-                <div className="border-t border-gray-100 dark:border-slate-700 pt-6">
+                <div className="border-t border-gray-100 dark:border-zinc-800 pt-6">
                   <h2 className="text-base font-medium text-zinc-800 dark:text-slate-200 mb-1">{summaryEmail.subject}</h2>
                   <p className="text-xs text-zinc-500 dark:text-slate-400 mb-4">From: {summaryEmail.from}</p>
                   {summaryLoading && (
@@ -519,7 +519,7 @@ export default function ReviewPage() {
                     <span className="text-zinc-300 dark:text-slate-600">/</span>
                     <span className="text-sm text-zinc-600 dark:text-slate-300 font-medium">Email</span>
                   </div>
-                  <div className="border-t border-gray-100 dark:border-slate-700 pt-6">
+                  <div className="border-t border-gray-100 dark:border-zinc-800 pt-6">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${categoryBadge(email.category)}`}>
                         {email.category}
@@ -558,7 +558,7 @@ export default function ReviewPage() {
                         Summary
                       </button>
                     </div>
-                    <div className="p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg">
+                    <div className="p-4 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg">
                       <p className="text-sm text-zinc-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{email.preview || 'No content available.'}</p>
                     </div>
                   </div>
@@ -601,7 +601,7 @@ export default function ReviewPage() {
                   <label className="block text-xs text-zinc-500 dark:text-slate-400 mb-1">What do you want to do? (optional)</label>
                   <input
                     type="text"
-                    className="w-full text-sm border border-gray-200 dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-800 text-zinc-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded px-3 py-2 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                     placeholder="e.g. CC Hanwen, agree to the delay, keep it brief"
                     value={userIntention}
                     onChange={e => setUserIntention(e.target.value)}
@@ -646,7 +646,7 @@ export default function ReviewPage() {
                   <button
                     onClick={() => submit(false)}
                     disabled={submitting || waitingForRewrite}
-                    className={`px-4 text-sm text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors ${submitting || waitingForRewrite ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`px-4 text-sm text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-zinc-700 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors ${submitting || waitingForRewrite ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Regenerate
                   </button>
@@ -665,7 +665,7 @@ export default function ReviewPage() {
   const hasActions = actions.length > 0
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
       <div className="max-w-2xl mx-auto py-10 px-4">
 
         {/* Header */}
@@ -716,7 +716,7 @@ export default function ReviewPage() {
               <div key={p.id} className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <p className="text-sm text-gray-500 dark:text-slate-400 mb-2 whitespace-pre-wrap">{p.content}</p>
                 <input
-                  className="w-full text-sm border border-blue-200 dark:border-blue-700 rounded px-3 py-2 mb-2 bg-white dark:bg-slate-800 text-zinc-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  className="w-full text-sm border border-blue-200 dark:border-blue-700 rounded px-3 py-2 mb-2 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                   placeholder="How should it be rewritten? (e.g. more direct, no formalities)"
                   value={rewriteInput[p.id] || ''}
                   onChange={e => setRewriteInput(r => ({ ...r, [p.id]: e.target.value }))}
@@ -730,7 +730,7 @@ export default function ReviewPage() {
 
             return (
               <div key={p.id} className="space-y-1">
-                <div className="p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg">
+                <div className="p-4 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg">
                   <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{p.content}</p>
                 </div>
                 <div className="flex justify-end gap-1">
@@ -766,7 +766,7 @@ export default function ReviewPage() {
           <button
             onClick={() => submit(false)}
             disabled={submitting || waitingForRewrite}
-            className={`px-4 text-sm text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors ${submitting || waitingForRewrite ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`px-4 text-sm text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-zinc-700 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors ${submitting || waitingForRewrite ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             Regenerate
           </button>
@@ -812,18 +812,18 @@ function DeleteButton({ onConfirm }: { onConfirm: (reasonKey: string) => void })
 
   return (
     <div ref={ref} className="relative">
-    <div className="absolute z-10 top-full right-0 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-sm p-1.5 min-w-[148px]">
+    <div className="absolute z-10 top-full right-0 mt-1 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-sm p-1.5 min-w-[148px]">
       <p className="text-xs text-gray-400 dark:text-slate-500 mb-1 px-2 pt-0.5">Why remove this?</p>
       {REASONS.map(r => (
         <button
           key={r.key}
           onClick={() => { onConfirm(r.key); setOpen(false) }}
-          className="block w-full text-left text-xs px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-slate-700 rounded text-gray-600 dark:text-slate-300 transition-colors"
+          className="block w-full text-left text-xs px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded text-gray-600 dark:text-slate-300 transition-colors"
         >
           {r.label}
         </button>
       ))}
-      <div className="border-t border-gray-100 dark:border-slate-700 mt-1 pt-1">
+      <div className="border-t border-gray-100 dark:border-zinc-800 mt-1 pt-1">
         <button
           onClick={() => setOpen(false)}
           className="block w-full text-left text-xs px-2 py-1.5 text-gray-300 dark:text-slate-600 hover:text-gray-500 dark:hover:text-slate-400 transition-colors"
