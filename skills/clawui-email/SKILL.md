@@ -29,16 +29,13 @@ For email review requests handled by this skill:
 
 Always submit to AgentClick via `POST /api/review` and let the user review in the AgentClick UI.
 
-When you have an email draft ready for user review, execute these steps **in order** using the bash tool.
-This workflow must be fast and mechanical:
-- NEVER use `/wait` (use only `GET /api/sessions/${SESSION_ID}`)
-- During polling, do not narrate between polls unless STATUS changes to `rewriting` or `completed`
-- Keep polling interval fixed at `sleep 1` (do not increase to 2/3/5 seconds)
-- Do NOT use `for`/`while` shell loops for polling
-- Each poll must be a single `exec` call (one GET request only), then branch in Step 3
-- Do NOT run background polling jobs or long-running polling commands
+---
 
-## Step 1: Submit draft for review
+## Main Agent: Two Steps Only
+
+The main agent submits the draft and immediately hands off to a sub-agent. It does NOT poll.
+
+### Step 1: Submit draft for review
 
 ```bash
 RESPONSE=$(curl -s -X POST http://host.docker.internal:3001/api/review \
@@ -79,68 +76,91 @@ echo "Session: $SESSION_ID"
 
 Replace placeholders with actual content. Split body into 2–4 logical paragraphs.
 
-## Step 2: Poll review status (short request)
+### Step 2: Spawn a monitor sub-agent
+
+Use the Task tool to spawn a sub-agent. Pass it:
+- The `SESSION_ID`
+- The full inbox array (exactly as submitted)
+- The original paragraphs array (exactly as submitted)
+
+Tell the sub-agent to follow the **Sub-Agent Instructions** section below.
+
+The main agent's job is done. The sub-agent handles all user interaction from here.
+Do NOT poll. Do NOT call `/wait` yourself. Do NOT start a new session.
+
+When the sub-agent finishes, it returns the final confirmed result. Use that to send the email.
+
+---
+
+## Sub-Agent Instructions
+
+You are a dedicated monitor for an AgentClick email review session. You own the full interaction loop until the user confirms or the session times out.
+
+You have been given:
+- `SESSION_ID` — the active session
+- `inbox` — the inbox array (never changes)
+- `paragraphs` — the current draft paragraphs (you update this on each rewrite)
+
+### Your loop
+
+Repeat until done (max 10 rewrite rounds):
+
+#### A. Block until user acts
 
 ```bash
-RESULT=$(curl -s "http://host.docker.internal:3001/api/sessions/${SESSION_ID}")
+RESULT=$(curl -s --max-time 310 \
+  "http://host.docker.internal:3001/api/sessions/${SESSION_ID}/wait")
 STATUS=$(echo "$RESULT" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
 echo "STATUS=$STATUS"
-if [ "$STATUS" != "pending" ]; then
-  echo "$RESULT"
-fi
+echo "$RESULT"
 ```
 
-The browser opens automatically. This is a short poll request (do not use `/wait` here).
-Do not use any other polling endpoint.
-Do not wrap polling in a shell loop (`for`, `while`, `until`).
+`/wait` blocks server-side for up to 5 minutes. It returns the moment the user clicks Confirm or Regenerate. Do not add `sleep` before or after this call.
 
-## Step 3: Act based on STATUS
+#### B. Branch on STATUS
 
-Do not print extra debug lines here. Branch directly on `STATUS`.
-
-There are exactly three cases:
-
-- **Case A: STATUS is `pending`** → The user is still reviewing. Run `sleep 1` and then go back to Step 2 immediately. Do not output extra explanation text.
-- **Case B: STATUS is `completed`** → The user confirmed. Send the email immediately. Do NOT ask the user again. You are done.
-- **Case C: STATUS is `rewriting`** → The user wants changes. You MUST execute Step 4 below. Do NOT skip it.
-
-Use this command when STATUS is `pending`:
+**`completed`** → The user confirmed. Extract the result and exit.
 
 ```bash
-sleep 1
+# Parse confirmed paragraphs and actions from $RESULT, then report:
+echo "DONE: user confirmed the draft"
 ```
 
-## Step 4: Rewrite draft and PUT it back (REQUIRED when STATUS is "rewriting")
+Report the final state (which paragraphs remain, any actions taken) so the main agent can send the email. Exit the loop.
 
-You MUST execute this step when STATUS was "rewriting". This is not optional.
+**`rewriting`** → The user wants changes. Go to step C, then loop back to A.
 
-First, read `result.actions` and `result.userIntention` from the Step 2 response. Rewrite the paragraphs accordingly.
+**HTTP 408 / empty STATUS** → `/wait` timed out (user inactive for 5 min). Report timeout and exit.
 
-Rewrite rules (for speed and correctness):
-- Apply the **minimum** change needed to satisfy the user feedback
-- Change only the paragraph(s) referenced in `result.actions` when possible
+```bash
+echo "TIMEOUT: user did not respond within 5 minutes"
+```
+
+#### C. Rewrite and PUT (only when STATUS is `rewriting`)
+
+Read `result.actions` and `result.userIntention` from the `/wait` response.
+
+Rewrite rules:
+- Apply the **minimum** change needed to satisfy the feedback
+- Only modify paragraphs referenced in `result.actions`
 - Keep all other paragraph text exactly unchanged
-- Keep `inbox` exactly unchanged from the last payload
-- Keep `draft.subject`, `draft.to`, and `draft.replyTo` unchanged unless explicitly requested
+- Keep `inbox`, `draft.subject`, `draft.to`, and `draft.replyTo` unchanged
 
-Then write the payload JSON to a temp file first (REQUIRED for stability, especially with Chinese/French/apostrophes), and send it with `-d @file`.
-
-Do NOT inline JSON directly in the curl command.
-
-Use this exact two-step pattern:
+Write the payload to a temp file (required for stability with special characters), then PUT:
 
 ```bash
 cat > /tmp/clawui_payload.json <<'JSON'
 {
   "payload": {
-    "inbox": [... keep the same inbox array from Step 1 ...],
+    "inbox": [SAME_INBOX_AS_SUBMITTED],
     "draft": {
       "replyTo": "e1",
       "to": "RECIPIENT_EMAIL",
       "subject": "Re: ORIGINAL_SUBJECT",
       "paragraphs": [
-        {"id": "p1", "content": "NEW_REWRITTEN_PARAGRAPH_1"},
-        {"id": "p2", "content": "NEW_REWRITTEN_PARAGRAPH_2"}
+        {"id": "p1", "content": "UPDATED_OR_UNCHANGED_PARAGRAPH_1"},
+        {"id": "p2", "content": "UPDATED_OR_UNCHANGED_PARAGRAPH_2"},
+        {"id": "p3", "content": "UPDATED_OR_UNCHANGED_PARAGRAPH_3"}
       ]
     }
   }
@@ -151,13 +171,12 @@ HTTP_CODE=$(curl -s -o /tmp/clawui_put_response.txt -w "%{http_code}" \
   -X PUT "http://host.docker.internal:3001/api/sessions/${SESSION_ID}/payload" \
   -H "Content-Type: application/json" \
   -d @/tmp/clawui_payload.json)
-echo "PUT_PAYLOAD_HTTP=$HTTP_CODE"
+echo "PUT_HTTP=$HTTP_CODE"
 cat /tmp/clawui_put_response.txt
 ```
 
-If HTTP is not `200`, fix the JSON file and retry Step 4. Do not continue polling with a failed PUT.
+If HTTP is not `200`, fix the JSON and retry the PUT. Do not loop back to A with a failed PUT.
 
-**IMPORTANT:** Do NOT create a new session. Reuse the same `SESSION_ID`.
-**IMPORTANT:** Do not rewrite the whole email from scratch when only one paragraph changed.
+After a successful PUT, update your local `paragraphs` variable to the new content, then **go back to step A**. The user will see the updated draft automatically.
 
-After the PUT succeeds (HTTP 200), **go back to Step 2** and poll again. The user will see the updated draft in the same browser tab. Repeat Step 2 → 3 → 4 until the user finally confirms.
+**IMPORTANT:** Do NOT create a new session. Always reuse the same `SESSION_ID`.
