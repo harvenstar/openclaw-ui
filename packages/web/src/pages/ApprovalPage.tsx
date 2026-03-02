@@ -43,17 +43,21 @@ export default function ApprovalPage() {
 
   const submit = async (approved: boolean) => {
     setSubmitting(true)
-    const result = await fetch(`/api/sessions/${id}/complete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ approved, note })
-    }).then(r => r.json())
-    if (result.callbackFailed) {
-      setCallbackFailed(true)
-      setSubmitted(true)
-      setTimeout(() => navigate('/'), 1500)
-    } else {
-      navigate('/')
+    try {
+      const result = await fetch(`/api/sessions/${id}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved, note })
+      }).then(r => r.json())
+      if (result.callbackFailed) {
+        setCallbackFailed(true)
+        setSubmitted(true)
+        setTimeout(() => navigate('/'), 1500)
+      } else {
+        navigate('/')
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
