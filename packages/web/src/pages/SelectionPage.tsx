@@ -26,12 +26,14 @@ export default function SelectionPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [callbackFailed, setCallbackFailed] = useState(false)
+  const [isCompleted, setIsCompleted] = useState(false)
 
   useEffect(() => {
     fetch(`/api/sessions/${id}`)
       .then(r => r.json())
       .then(data => {
         setPayload(data.payload as SelectionPayload)
+        if (data.status === 'completed') setIsCompleted(true)
         setLoading(false)
       })
       .catch(() => { setError(true); setLoading(false) })
@@ -52,17 +54,21 @@ export default function SelectionPage() {
 
   const submit = async () => {
     setSubmitting(true)
-    const result = await fetch(`/api/sessions/${id}/complete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ selectedIds, note }),
-    }).then(r => r.json())
-    if (result.callbackFailed) {
-      setCallbackFailed(true)
-      setSubmitted(true)
-      setTimeout(() => navigate('/'), 1500)
-    } else {
-      navigate('/')
+    try {
+      const result = await fetch(`/api/sessions/${id}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedIds, note }),
+      }).then(r => r.json())
+      if (result.callbackFailed) {
+        setCallbackFailed(true)
+        setSubmitted(true)
+        setTimeout(() => navigate('/'), 1500)
+      } else {
+        navigate('/')
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -99,6 +105,12 @@ export default function SelectionPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
       <div className="max-w-2xl mx-auto py-10 px-4">
+        {isCompleted && (
+          <div className="mb-6 px-4 py-3 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg flex items-center justify-between">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">This session has been completed.</p>
+            <button onClick={() => navigate('/')} className="text-sm text-blue-400 hover:text-blue-500 transition-colors">← Back</button>
+          </div>
+        )}
         <div className="mb-6">
           <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase tracking-wider mb-1">Selection Review</p>
           <h1 className="text-xl font-semibold text-zinc-900 dark:text-slate-100">{payload.question}</h1>
@@ -135,27 +147,30 @@ export default function SelectionPage() {
           })}
         </div>
 
-        <div className="mb-4">
-          <textarea
-            className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-700 dark:text-slate-300 bg-white dark:bg-zinc-900 placeholder-zinc-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            rows={3}
-            placeholder="Add a note (optional)"
-            value={note}
-            onChange={e => setNote(e.target.value)}
-          />
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={submit}
-            disabled={submitting || selectedIds.length === 0}
-            className={`flex-1 bg-zinc-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium py-2.5 rounded-lg hover:bg-zinc-700 dark:hover:bg-slate-200 transition-colors ${
-              submitting || selectedIds.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            Confirm
-          </button>
-        </div>
+        {!isCompleted && (
+          <>
+            <div className="mb-4">
+              <textarea
+                className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-700 dark:text-slate-300 bg-white dark:bg-zinc-900 placeholder-zinc-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                rows={3}
+                placeholder="Add a note (optional)"
+                value={note}
+                onChange={e => setNote(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={submit}
+                disabled={submitting || selectedIds.length === 0}
+                className={`flex-1 bg-zinc-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium py-2.5 rounded-lg hover:bg-zinc-700 dark:hover:bg-slate-200 transition-colors ${
+                  submitting || selectedIds.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                Confirm
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
