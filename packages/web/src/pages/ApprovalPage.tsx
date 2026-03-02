@@ -30,12 +30,14 @@ export default function ApprovalPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [callbackFailed, setCallbackFailed] = useState(false)
+  const [isCompleted, setIsCompleted] = useState(false)
 
   useEffect(() => {
     fetch(`/api/sessions/${id}`)
       .then(r => r.json())
       .then(data => {
         setPayload(data.payload as ApprovalPayload)
+        if (data.status === 'completed') setIsCompleted(true)
         setLoading(false)
       })
       .catch(() => { setError(true); setLoading(false) })
@@ -76,6 +78,16 @@ export default function ApprovalPage() {
   if (!payload) return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <p className="text-red-400">Session not found.</p>
+    </div>
+  )
+
+  if (isCompleted) return (
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-zinc-700 dark:text-slate-200 font-medium">Session completed.</p>
+        <p className="text-zinc-400 dark:text-slate-500 text-sm mt-1">This approval has already been submitted.</p>
+        <button onClick={() => navigate('/')} className="mt-4 text-sm text-blue-400 hover:text-blue-500 transition-colors">← Back to sessions</button>
+      </div>
     </div>
   )
 
