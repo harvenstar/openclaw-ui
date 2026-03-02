@@ -62,6 +62,7 @@ No WebSockets, no framework plugins. One HTTP endpoint in, one HTTP endpoint out
 - **email_review** -- two-column inbox and draft editor. Users can delete paragraphs with reasons, request rewrites, toggle intent suggestions, and confirm or regenerate.
 - **code_review** -- displays the shell command, working directory, affected files as a collapsible tree, and risk level. Approve or reject with an optional note.
 - **action_approval** -- generic high-risk action gate. Shows action description, detail, and risk badge. Approve or reject with an optional note.
+- **trajectory_review** -- DAG visualization of a multi-step agent execution. Users can mark incorrect steps, provide per-step guidance, set a resume point, and request a retry. Guidance with "Remember this" checked is persisted to `MEMORY.md` for future runs.
 
 ---
 
@@ -69,10 +70,12 @@ No WebSockets, no framework plugins. One HTTP endpoint in, one HTTP endpoint out
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/review` | Agent creates a review session. Returns `{ sessionId, url }`. Browser opens automatically. |
+| POST | `/api/review` | Agent creates a review session. Returns `{ sessionId, url }`. Browser opens automatically unless `noOpen: true` is passed. |
+| POST | `/api/review/batch` | Create multiple sessions at once. Pass `{ sessions: [...] }`. Returns `{ sessions: [{ sessionId, url }] }`. All sessions are silent (no browser open). |
 | GET | `/api/sessions/:id` | Fetch session data (payload, status, result). |
 | GET | `/api/sessions/:id/wait` | Long-poll. Blocks up to 5 minutes until the user completes the review. |
 | POST | `/api/sessions/:id/complete` | UI submits the user's decision. Triggers preference learning and agent callback. |
+| PUT | `/api/sessions/:id/payload` | Agent updates payload after a rewrite cycle. Only valid when session status is `rewriting`. |
 
 ---
 
