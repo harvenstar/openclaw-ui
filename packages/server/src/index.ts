@@ -5,7 +5,7 @@ import open from 'open'
 import { existsSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
-import { learnFromDeletions, getLearnedPreferences, clearPreferences } from './preference.js'
+import { learnFromDeletions, getLearnedPreferences, clearPreferences, deletePreference } from './preference.js'
 import { createSession, getSession, listSessions, completeSession, setSessionRewriting, updateSessionPayload } from './store.js'
 
 const app = express()
@@ -89,6 +89,14 @@ app.get('/api/preferences', (_req, res) => {
 app.delete('/api/preferences', (_req, res) => {
   clearPreferences()
   console.log('[agentclick] Cleared all learned preferences from MEMORY.md')
+  res.json({ ok: true })
+})
+
+app.delete('/api/preferences/:index', (req, res) => {
+  const index = parseInt(req.params.index, 10)
+  if (isNaN(index)) return res.status(400).json({ error: 'Invalid index' })
+  deletePreference(index)
+  console.log(`[agentclick] Deleted preference at index ${index}`)
   res.json({ ok: true })
 })
 

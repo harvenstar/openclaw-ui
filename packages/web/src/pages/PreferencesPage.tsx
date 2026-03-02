@@ -30,6 +30,7 @@ export default function PreferencesPage() {
   const [preferences, setPreferences] = useState<LearnedPreference[]>([])
   const [loading, setLoading] = useState(true)
   const [clearing, setClearing] = useState(false)
+  const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/preferences')
@@ -37,6 +38,13 @@ export default function PreferencesPage() {
       .then(data => { setPreferences(data.preferences ?? []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
+
+  const deleteOne = async (index: number) => {
+    setDeletingIndex(index)
+    await fetch(`/api/preferences/${index}`, { method: 'DELETE' }).catch(() => {})
+    setPreferences(p => p.filter((_, i) => i !== index))
+    setDeletingIndex(null)
+  }
 
   const clearAll = async () => {
     setClearing(true)
@@ -90,7 +98,15 @@ export default function PreferencesPage() {
                   <span className={`text-xs px-2 py-0.5 rounded font-medium shrink-0 mt-0.5 ${reasonColor(pref.reason)}`}>
                     {pref.reason.replace(/_/g, ' ')}
                   </span>
-                  <p className="text-sm text-zinc-600 dark:text-slate-300 leading-relaxed">{pref.description}</p>
+                  <p className="text-sm text-zinc-600 dark:text-slate-300 leading-relaxed flex-1">{pref.description}</p>
+                  <button
+                    onClick={() => deleteOne(i)}
+                    disabled={deletingIndex === i}
+                    className="shrink-0 text-zinc-300 dark:text-zinc-600 hover:text-red-400 dark:hover:text-red-400 transition-colors text-sm leading-none mt-0.5"
+                    title="Delete"
+                  >
+                    ×
+                  </button>
                 </div>
               ))}
             </div>

@@ -130,6 +130,31 @@ export function getLearnedPreferences(): LearnedPreference[] {
   return preferences
 }
 
+export function deletePreference(index: number): void {
+  if (!fs.existsSync(MEMORY_PATH)) return
+
+  const content = fs.readFileSync(MEMORY_PATH, 'utf-8')
+  const lines = content.split('\n')
+  const headerIdx = lines.findIndex(l => l === SECTION_HEADER)
+  if (headerIdx === -1) return
+
+  let endIdx = lines.length
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    if (lines[i].startsWith('## ')) { endIdx = i; break }
+  }
+
+  // Collect indices of AVOID lines in the section
+  const avoidLineIndices: number[] = []
+  for (let i = headerIdx + 1; i < endIdx; i++) {
+    if (lines[i].match(/^- AVOID:/)) avoidLineIndices.push(i)
+  }
+
+  if (index < 0 || index >= avoidLineIndices.length) return
+
+  lines.splice(avoidLineIndices[index], 1)
+  fs.writeFileSync(MEMORY_PATH, lines.join('\n'), 'utf-8')
+}
+
 export function clearPreferences(): void {
   if (!fs.existsSync(MEMORY_PATH)) return
 
