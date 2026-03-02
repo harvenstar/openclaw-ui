@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 interface SessionItem {
@@ -77,21 +77,50 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [prefCount, setPrefCount] = useState<number | null>(null)
 
-  useEffect(() => {
+  const pendingIdsRef = useRef<string>('')
+
+  const fetchSessions = useCallback((initial = false) => {
     fetch('/api/sessions')
       .then(r => r.json())
       .then((data: SessionItem[]) => {
-        setPending(data.filter(s => s.status === 'pending'))
-        setCompletedCount(data.filter(s => s.status === 'completed').length)
-        setLoading(false)
+        const nextPending = data.filter(s => s.status === 'pending')
+        const nextIds = nextPending.map(s => s.id).join(',')
+        // Only update state if pending list actually changed
+        if (initial || nextIds !== pendingIdsRef.current) {
+          pendingIdsRef.current = nextIds
+          setPending(nextPending)
+          setCompletedCount(data.filter(s => s.status === 'completed').length)
+        }
+        if (initial) setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch(() => { if (initial) setLoading(false) })
+  }, [])
+
+  useEffect(() => {
+    fetchSessions(true)
 
     fetch('/api/preferences')
       .then(r => r.json())
       .then(data => setPrefCount((data.preferences ?? []).length))
       .catch(() => {})
-  }, [])
+
+    const INTERVAL = 5000
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    const start = () => { timer = setInterval(() => fetchSessions(), INTERVAL) }
+    const stop = () => { if (timer) { clearInterval(timer); timer = null } }
+
+    // Only poll when tab is visible
+    const onVisibility = () => document.visibilityState === 'visible' ? start() : stop()
+    document.addEventListener('visibilitychange', onVisibility)
+
+    if (document.visibilityState === 'visible') start()
+
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [fetchSessions])
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
