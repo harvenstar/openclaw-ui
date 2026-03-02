@@ -21,7 +21,8 @@ const REASON_COLORS: Record<string, string> = {
 }
 
 function reasonColor(reason: string): string {
-  return REASON_COLORS[reason] ?? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+  const key = reason.toLowerCase().replace(/ /g, '_')
+  return REASON_COLORS[key] ?? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
 }
 
 export default function PreferencesPage() {
