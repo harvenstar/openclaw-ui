@@ -334,6 +334,9 @@ function PlanDagNode({
   isSkipped,
   isModified,
   isInserted,
+  stepConstraints,
+  onAddConstraint,
+  onRemoveConstraint,
   onMouseEnter,
   onMouseLeave,
   onClick,
@@ -352,6 +355,9 @@ function PlanDagNode({
   isSkipped: boolean
   isModified: boolean
   isInserted: boolean
+  stepConstraints: string[]
+  onAddConstraint: (id: string, constraint: string) => void
+  onRemoveConstraint: (id: string, index: number) => void
   onMouseEnter: () => void
   onMouseLeave: () => void
   onClick: () => void
@@ -359,6 +365,8 @@ function PlanDagNode({
   const step = node.step
   const riskColor = step.risk ? `var(--c-risk-${step.risk})` : undefined
   const textClass = isRemoved ? 'line-through text-zinc-400 dark:text-slate-500' : 'text-zinc-700 dark:text-slate-300'
+  const [inlineConstraint, setInlineConstraint] = useState('')
+  const allConstraints = [...(step.constraints ?? []), ...stepConstraints]
 
   return (
     <div
@@ -463,12 +471,66 @@ function PlanDagNode({
           </div>
         )}
 
-        {step.constraints && step.constraints.length > 0 && (
+        {step.constraints && step.constraints.length > 0 && !isSelected && (
           <div className="mt-2">
             <p className="text-[10px] font-medium text-zinc-400 dark:text-slate-500 uppercase">Constraints</p>
             <p className={`text-xs mt-1 whitespace-pre-wrap break-words ${textClass}`}>
               {step.constraints.map(c => `- ${c}`).join('\n')}
             </p>
+          </div>
+        )}
+
+        {isSelected && (
+          <div className="mt-3 pt-2 border-t border-gray-200 dark:border-zinc-700">
+            <p className="text-[10px] font-medium text-zinc-500 dark:text-slate-400 uppercase mb-1">
+              Guidance / Constraint
+            </p>
+            {allConstraints.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {allConstraints.map((c, idx) => (
+                  <span key={`${node.stepId}-c-${idx}`} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                    {c}
+                    {idx >= (step.constraints ?? []).length && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onRemoveConstraint(node.stepId, idx - (step.constraints ?? []).length) }}
+                        className="text-amber-500 hover:text-amber-700 text-[10px] ml-0.5"
+                        aria-label={`Remove constraint ${idx + 1}`}
+                      >
+                        &times;
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-1">
+              <input
+                className="flex-1 text-xs border border-gray-200 dark:border-zinc-700 rounded px-2 py-1 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-slate-300 placeholder-zinc-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Add guidance or constraint..."
+                value={inlineConstraint}
+                onClick={(e) => e.stopPropagation()}
+                onChange={e => setInlineConstraint(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && inlineConstraint.trim()) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onAddConstraint(node.stepId, inlineConstraint.trim())
+                    setInlineConstraint('')
+                  }
+                }}
+              />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!inlineConstraint.trim()) return
+                  onAddConstraint(node.stepId, inlineConstraint.trim())
+                  setInlineConstraint('')
+                }}
+                className="text-xs px-2 py-1 text-blue-500 border border-blue-200 dark:border-blue-800 rounded hover:bg-blue-50 dark:hover:bg-blue-950"
+              >
+                +
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -976,6 +1038,9 @@ function PlanDagCanvas({
                   isSkipped={skippedIds.has(n.stepId)}
                   isModified={modifications.has(n.stepId)}
                   isInserted={insertedIds.has(n.stepId)}
+                  stepConstraints={constraints.get(n.stepId) ?? []}
+                  onAddConstraint={onAddConstraint}
+                  onRemoveConstraint={onRemoveConstraint}
                   onMouseEnter={() => setHoveredNodeId(n.stepId)}
                   onMouseLeave={() => setHoveredNodeId(null)}
                   onClick={() => handleNodeClick(n.stepId, hasChildren)}
