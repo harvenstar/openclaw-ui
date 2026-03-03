@@ -137,7 +137,7 @@ Submit a multi-step execution plan to AgentClick for human review. The human can
 ## Submitting a Plan
 
 ```bash
-curl -X POST http://localhost:3001/api/review \
+RESPONSE=$(curl -s -X POST http://localhost:3001/api/review \
   -H 'Content-Type: application/json' \
   -d '{
     "type": "plan_review",
@@ -150,8 +150,24 @@ curl -X POST http://localhost:3001/api/review \
         { "id": "s3", "type": "checkpoint", "label": "Run tests", "risk": "low" }
       ]
     }
-  }'
+  }')
+SESSION_ID=$(echo "$RESPONSE" | grep -o '"sessionId":"[^"]*"' | cut -d'"' -f4)
+echo "Session: $SESSION_ID"
 ```
+
+## Wait Protocol (Required)
+
+After creating the session, immediately block on `/wait` for that same session. Do not continue execution before `/wait` returns a decision.
+
+```bash
+curl -s "http://localhost:3001/api/sessions/${SESSION_ID}/wait"
+```
+
+Rules:
+
+- Do not ask the user for duplicate confirmation in chat while waiting.
+- Do not create a second review session for the same plan unless the first one is abandoned.
+- Treat `/wait` as the single source of truth for approval state.
 
 ## Result Schema
 
@@ -190,6 +206,8 @@ The human's response is returned via `/api/sessions/:id/wait`:
 
 ## Act on Decision
 
-- **approved**: Execute the plan as modified (apply modifications, respect removals/skipped, honor constraints)
+- **approved**: Execute the plan as modified immediately (apply modifications, respect removals/skipped, honor constraints). Do not ask for confirmation again in chat.
 - **rejected**: Stop execution, do not proceed
 - **regenerate**: Revise the plan incorporating human feedback, then PUT updated payload for re-review
+
+If `/wait` times out (HTTP 408), ask the user whether to keep waiting or cancel.
