@@ -32,6 +32,15 @@ function parsePortFromOrigin(origin: string): number | null {
   }
 }
 
+function escapeHtml(input: string): string {
+  return input
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
 async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -112,6 +121,63 @@ app.get('/api/home-info', (_req, res) => {
     readmeSummary,
   })
 })
+
+if (!SHOULD_SERVE_BUILT_WEB) {
+  app.get('/', (_req, res) => {
+    const functions = [
+      'action_approval',
+      'code_review',
+      'email_review',
+      'plan_review',
+      'trajectory_review',
+      'form_review',
+      'selection_review',
+    ]
+    let readmeSummary = 'README.md not found.'
+    if (existsSync(README_PATH)) {
+      const readme = readFileSync(README_PATH, 'utf-8')
+      readmeSummary = readme.split('\n').slice(0, 40).join('\n')
+    }
+
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AgentClick Default Page</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #f6f7f9; color: #111827; margin: 0; }
+      .wrap { max-width: 980px; margin: 0 auto; padding: 28px 16px; }
+      .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
+      .chip { font-size: 12px; padding: 3px 8px; border-radius: 999px; background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+      pre { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; overflow: auto; white-space: pre-wrap; font-size: 12px; line-height: 1.5; }
+      a { color: #2563eb; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      h1 { margin: 0 0 6px; font-size: 24px; }
+      p { margin: 0; color: #4b5563; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>AgentClick Default Page</h1>
+        <p>Server: <strong>http://localhost:${PORT}</strong> | Frontend: <strong>${escapeHtml(WEB_ORIGIN)}</strong></p>
+        <p style="margin-top:8px;"><a href="${escapeHtml(WEB_ORIGIN)}/" target="_blank" rel="noreferrer">Open Frontend Default Page</a> · <a href="https://github.com/agentlayer-io/AgentClick" target="_blank" rel="noreferrer">Open Repository</a></p>
+      </div>
+      <div class="card">
+        <strong>Functions</strong>
+        <div class="chips">
+          ${functions.map(fn => `<span class="chip">${fn}</span>`).join('')}
+        </div>
+        <pre>${escapeHtml(readmeSummary)}</pre>
+      </div>
+    </div>
+  </body>
+</html>`
+    res.status(200).send(html)
+  })
+}
 
 // OpenClaw calls this when a review is needed
 app.post('/api/review', async (req, res) => {
