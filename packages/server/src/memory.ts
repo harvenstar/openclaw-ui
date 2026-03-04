@@ -45,6 +45,12 @@ export interface MemoryReviewPayload {
   compressionRecommendations: CompressionRecommendation[]
 }
 
+export interface MemoryCatalogPayload {
+  groups: Array<{ id: string; label: string; fileIds: string[] }>
+  files: MemoryFileItem[]
+  defaultIncludedFileIds: string[]
+}
+
 function walkMarkdownFiles(baseDir: string, options?: { maxFiles?: number }): string[] {
   const maxFiles = options?.maxFiles ?? 200
   const output: string[] = []
@@ -123,11 +129,10 @@ function toId(index: number): string {
   return `mem_${index.toString(36)}`
 }
 
-export function buildMemoryReviewPayload(input: {
+export function buildMemoryCatalog(input: {
   projectRoot: string
   currentContextFiles?: string[]
-  generatedContent?: string
-}): MemoryReviewPayload {
+}): MemoryCatalogPayload {
   const projectRoot = input.projectRoot
   const currentContextSet = new Set((input.currentContextFiles ?? []).map(p => path.resolve(projectRoot, p)))
   const relatedMarkdown = walkMarkdownFiles(projectRoot, { maxFiles: 220 })
@@ -208,6 +213,43 @@ export function buildMemoryReviewPayload(input: {
     .filter(f => f.inCurrentContent || f.inProject || f.inAgentCache)
     .map(f => f.id)
 
+  return {
+    groups,
+    files,
+    defaultIncludedFileIds,
+  }
+}
+
+export function readMemoryFileContent(input: {
+  projectRoot: string
+  filePath: string
+  currentContextFiles?: string[]
+}): { path: string; relativePath: string; content: string } | null {
+  const catalog = buildMemoryCatalog({
+    projectRoot: input.projectRoot,
+    currentContextFiles: input.currentContextFiles,
+  })
+  const target = catalog.files.find(f => path.resolve(f.path) === path.resolve(input.filePath))
+  if (!target) return null
+  const content = safeRead(target.path, 200000)
+  return {
+    path: target.path,
+    relativePath: target.relativePath,
+    content,
+  }
+}
+
+export function buildMemoryReviewPayload(input: {
+  projectRoot: string
+  currentContextFiles?: string[]
+  generatedContent?: string
+}): MemoryReviewPayload {
+  const catalog = buildMemoryCatalog({
+    projectRoot: input.projectRoot,
+    currentContextFiles: input.currentContextFiles,
+  })
+  const { groups, files, defaultIncludedFileIds } = catalog
+
   const targetFile = files.find(f => f.inProject || f.inAgentCache) ?? files[0]
   const generatedContent = input.generatedContent
     ?? `## Auto-generated Memory Update (${new Date().toISOString()})\n- Summarized from latest memory review decisions.\n- Keep relevant project guidance and discard noisy markdown.\n`
@@ -245,4 +287,3 @@ export function buildMemoryReviewPayload(input: {
     compressionRecommendations,
   }
 }
-

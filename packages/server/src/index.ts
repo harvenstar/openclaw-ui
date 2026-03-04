@@ -7,7 +7,7 @@ import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import { learnFromDeletions, learnFromTrajectoryRevisions, getLearnedPreferences, clearPreferences, deletePreference } from './preference.js'
 import { createSession, getSession, listSessions, completeSession, setSessionRewriting, updateSessionPayload } from './store.js'
-import { buildMemoryReviewPayload } from './memory.js'
+import { buildMemoryCatalog, buildMemoryReviewPayload, readMemoryFileContent } from './memory.js'
 
 const app = express()
 const DEFAULT_PORT = 38173
@@ -106,6 +106,7 @@ app.get('/api/home-info', (_req, res) => {
     { type: 'action_approval', route: '/approval/:id' },
     { type: 'code_review', route: '/code-review/:id' },
     { type: 'email_review', route: '/review/:id' },
+    { type: 'memory_management', route: '/memory-management' },
     { type: 'plan_review', route: '/plan/:id' },
     { type: 'memory_review', route: '/memory/:id' },
     { type: 'trajectory_review', route: '/trajectory/:id' },
@@ -130,7 +131,9 @@ if (!SHOULD_SERVE_BUILT_WEB) {
       'action_approval',
       'code_review',
       'email_review',
+      'memory_management',
       'plan_review',
+      'memory_review',
       'trajectory_review',
       'form_review',
       'selection_review',
@@ -229,6 +232,24 @@ app.post('/api/review', async (req, res) => {
   }
 
   res.json({ sessionId: id, url })
+})
+
+app.get('/api/memory/files', (req, res) => {
+  const projectRoot = join(__dirname, '../../..')
+  const currentContextFiles = typeof req.query.currentContextFiles === 'string'
+    ? req.query.currentContextFiles.split(',').map(v => v.trim()).filter(Boolean)
+    : undefined
+  const catalog = buildMemoryCatalog({ projectRoot, currentContextFiles })
+  res.json(catalog)
+})
+
+app.get('/api/memory/file', (req, res) => {
+  const projectRoot = join(__dirname, '../../..')
+  const filePath = typeof req.query.path === 'string' ? req.query.path : ''
+  if (!filePath) return res.status(400).json({ error: 'Missing path query' })
+  const file = readMemoryFileContent({ projectRoot, filePath })
+  if (!file) return res.status(404).json({ error: 'File not found in memory catalog' })
+  res.json(file)
 })
 
 app.post('/api/memory/review/create', async (req, res) => {
