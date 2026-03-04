@@ -11,9 +11,19 @@ cd /Users/hm/.openclaw/workspace/AgentClick
 npm start
 ```
 
-Default server: `http://localhost:38173` (legacy deployments may still use `:3001`)
+Default server: `http://localhost:38173`
 
-Containerized clients may use `http://host.docker.internal:38173` (or your overridden `PORT`).
+Containerized clients may use `http://host.docker.internal:38173` (or `AGENTCLICK_PORT` / `AGENTCLICK_URL` overrides).
+
+## Port Pipeline
+
+Use this runtime pipeline before review calls:
+
+1. Read `AGENTCLICK_URL` (if set) and use it directly.
+2. Else read `AGENTCLICK_PORT` (fallback `PORT`, then `38173`) and target `http://localhost:<port>`.
+3. Verify identity with `GET /api/identity`.
+4. If identity check fails, start `agentclick` and set `AGENTCLICK_PORT` for the running process chain.
+5. Then create review sessions and keep an active `/wait` loop.
 
 ## Supported Review Types
 
@@ -32,7 +42,7 @@ Canonical types accepted by `POST /api/review`:
 ### 1) Create session
 
 ```bash
-curl -s -X POST http://localhost:38173/api/review \
+curl -s -X POST "${AGENTCLICK_URL:-http://localhost:${AGENTCLICK_PORT:-38173}}/api/review" \
   -H 'Content-Type: application/json' \
   -d '{
     "type": "action_approval",
@@ -50,7 +60,7 @@ Response:
 ### 2) Wait for human decision (required active polling)
 
 ```bash
-curl -s "http://localhost:38173/api/sessions/<sessionId>/wait"
+curl -s "${AGENTCLICK_URL:-http://localhost:${AGENTCLICK_PORT:-38173}}/api/sessions/<sessionId>/wait"
 ```
 
 `/wait` blocks up to 5 minutes. Returns the session when status becomes `completed` or `rewriting`.
@@ -69,7 +79,7 @@ Important:
 ### 4) Rewrite payload (when requested)
 
 ```bash
-curl -s -X PUT "http://localhost:38173/api/sessions/<sessionId>/payload" \
+curl -s -X PUT "${AGENTCLICK_URL:-http://localhost:${AGENTCLICK_PORT:-38173}}/api/sessions/<sessionId>/payload" \
   -H 'Content-Type: application/json' \
   -d '{ "payload": { "...": "updated" } }'
 ```

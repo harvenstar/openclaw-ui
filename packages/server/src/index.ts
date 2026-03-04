@@ -10,7 +10,7 @@ import { createSession, getSession, listSessions, completeSession, setSessionRew
 
 const app = express()
 const DEFAULT_PORT = 38173
-const PORT = Number(process.env.PORT || DEFAULT_PORT)
+const PORT = Number(process.env.AGENTCLICK_PORT || process.env.PORT || DEFAULT_PORT)
 const OPENCLAW_WEBHOOK = process.env.OPENCLAW_WEBHOOK || 'http://localhost:18789/hooks/agent'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)

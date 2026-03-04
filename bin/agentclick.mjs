@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import net from 'node:net'
 
+const DEFAULT_PORT = 38173
 const __filename = fileURLToPath(import.meta.url)
 const rootDir = dirname(dirname(__filename))
 const webDistIndex = join(rootDir, 'packages', 'web', 'dist', 'index.html')
@@ -35,10 +36,11 @@ Options:
 
 Examples:
   agentclick              Start the server (auto-detects port)
-  PORT=4000 agentclick    Start on a specific port
+  AGENTCLICK_PORT=4000 agentclick    Start on a specific port
 
 Environment:
-  PORT                    Server port (default: 38173, auto-fallback if busy)
+  AGENTCLICK_PORT         Preferred server port (default: 38173)
+  PORT                    Backward-compatible server port override
   OPENCLAW_WEBHOOK        Webhook URL for agent callbacks
 `)
 }
@@ -107,6 +109,28 @@ async function canListen(port) {
   })
 }
 
+async function getClosestAvailablePort(preferredPort) {
+  const nextPort = preferredPort + 1
+  if (await canListen(nextPort)) return nextPort
+  // Fallback to OS-assigned free port (no range scan).
+  return await new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.once('error', reject)
+    server.listen(0, () => {
+      const address = server.address()
+      if (!address || typeof address === 'string') {
+        server.close(() => reject(new Error('Failed to resolve ephemeral port')))
+        return
+      }
+      const freePort = address.port
+      server.close(err => {
+        if (err) reject(err)
+        else resolve(freePort)
+      })
+    })
+  })
+}
+
 async function isAgentClickServer(port) {
   const url = `http://localhost:${port}/api/identity`
   const controller = new AbortController()
@@ -124,48 +148,23 @@ async function isAgentClickServer(port) {
 }
 
 async function resolvePort() {
-  const explicitPort = process.env.PORT ? Number(process.env.PORT) : null
-  if (explicitPort && Number.isFinite(explicitPort) && explicitPort > 0) {
-    const free = await canListen(explicitPort)
-    if (free) return String(explicitPort)
-    if (await isAgentClickServer(explicitPort)) {
-      console.log(`[agentclick] AgentClick already running at http://localhost:${explicitPort}; reusing existing server.`)
-      return null
-    }
-    console.log(`[agentclick] Port ${explicitPort} is occupied by another service; searching for fallback port...`)
-    let fallback = explicitPort + 1
-    while (true) {
-      const available = await canListen(fallback)
-      if (available) {
-        console.log(`[agentclick] Using fallback port ${fallback}`)
-        return String(fallback)
-      }
-      if (await isAgentClickServer(fallback)) {
-        console.log(`[agentclick] AgentClick already running at http://localhost:${fallback}; reusing existing server.`)
-        return null
-      }
-      fallback += 1
-    }
+  const configuredPort = Number(process.env.AGENTCLICK_PORT || process.env.PORT || DEFAULT_PORT)
+  if (!Number.isFinite(configuredPort) || configuredPort <= 0) {
+    console.error('[agentclick] Invalid AGENTCLICK_PORT/PORT configuration.')
+    process.exit(1)
   }
 
-  // Backward compatibility: if legacy default is running AgentClick, reuse it.
-  const legacyPort = 3001
-  if (await isAgentClickServer(legacyPort)) {
-    console.log(`[agentclick] AgentClick already running at legacy default http://localhost:${legacyPort}; reusing existing server.`)
+  const free = await canListen(configuredPort)
+  if (free) return String(configuredPort)
+
+  if (await isAgentClickServer(configuredPort)) {
+    console.log(`[agentclick] AgentClick already running at http://localhost:${configuredPort}; reusing existing server.`)
     return null
   }
 
-  let port = 38173
-  while (true) {
-    const available = await canListen(port)
-    if (available) return String(port)
-    if (await isAgentClickServer(port)) {
-      console.log(`[agentclick] AgentClick already running at http://localhost:${port}; reusing existing server.`)
-      return null
-    }
-    console.log(`[agentclick] Port ${port} in use by another service, trying ${port + 1}...`)
-    port += 1
-  }
+  const fallbackPort = await getClosestAvailablePort(configuredPort)
+  console.log(`[agentclick] Port ${configuredPort} is occupied by another service. Starting AgentClick on ${fallbackPort}.`)
+  return String(fallbackPort)
 }
 
 const childEnv = { ...process.env }
@@ -174,6 +173,9 @@ if (!resolvedPort) {
   process.exit(0)
 }
 childEnv.PORT = resolvedPort
+childEnv.AGENTCLICK_PORT = resolvedPort
+process.env.AGENTCLICK_PORT = resolvedPort
+console.log(`[agentclick] Using AGENTCLICK_PORT=${resolvedPort}`)
 
 const result = spawnSync(process.execPath, [serverDistEntry], {
   cwd: rootDir,
