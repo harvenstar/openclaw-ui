@@ -7,6 +7,9 @@ interface MemoryFile {
   categories: string[]
   preview: string
   inCurrentContent: boolean
+  inProject: boolean
+  inAgentCache: boolean
+  relatedMarkdown: boolean
 }
 
 interface MemoryGroup {
@@ -97,6 +100,7 @@ export default function MemoryManagementPage() {
   const [selectedPath, setSelectedPath] = useState<string>('')
   const [selectedContent, setSelectedContent] = useState<FileContentResponse | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [collapsedMindGroups, setCollapsedMindGroups] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [fileLoading, setFileLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
@@ -154,10 +158,49 @@ export default function MemoryManagementPage() {
     })
   }
 
+  const toggleMindGroup = (id: string) => {
+    setCollapsedMindGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   const selectedFile = useMemo(() => {
     if (!selectedPath) return null
     return catalog?.files.find(file => file.path === selectedPath) ?? null
   }, [catalog, selectedPath])
+
+  const mindGroups = useMemo(() => {
+    const files = catalog?.files ?? []
+    return [
+      {
+        id: 'mind_in_content',
+        label: 'In This Content',
+        files: files.filter(file => file.inCurrentContent),
+        color: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+      },
+      {
+        id: 'mind_in_project',
+        label: 'In Project (Not Loaded)',
+        files: files.filter(file => !file.inCurrentContent && file.inProject),
+        color: 'border-blue-300 bg-blue-50 text-blue-800',
+      },
+      {
+        id: 'mind_in_cache',
+        label: 'In Agent Cache (Not Loaded)',
+        files: files.filter(file => !file.inCurrentContent && file.inAgentCache),
+        color: 'border-amber-300 bg-amber-50 text-amber-800',
+      },
+      {
+        id: 'mind_related',
+        label: 'Related Markdown',
+        files: files.filter(file => !file.inCurrentContent && !file.inProject && !file.inAgentCache && file.relatedMarkdown),
+        color: 'border-zinc-300 bg-zinc-100 text-zinc-700',
+      },
+    ].filter(group => group.files.length > 0)
+  }, [catalog])
 
   const setInContext = async (targetPath: string, include: boolean) => {
     setActionLoading(true)
@@ -212,7 +255,56 @@ export default function MemoryManagementPage() {
         {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
 
         {!loading && catalog && (
-          <div className="mt-5 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
+          <>
+            <div className="mt-5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg p-4 overflow-x-auto">
+              <p className="text-sm font-medium text-zinc-800 dark:text-slate-200">Memory Level Mind Map</p>
+              <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1">Click any file node to open the full file. Click a level node to fold or unfold.</p>
+              <div className="mt-4 min-w-[920px]">
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 px-3 py-2 rounded-full border border-violet-300 bg-violet-50 text-violet-800 text-xs font-semibold">
+                    Memory
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    {mindGroups.map(group => {
+                      const collapsed = collapsedMindGroups.has(group.id)
+                      return (
+                        <div key={group.id} className="flex items-start gap-2">
+                          <button
+                            onClick={() => toggleMindGroup(group.id)}
+                            className={`shrink-0 px-3 py-1.5 rounded-full border text-xs font-medium ${group.color}`}
+                          >
+                            {collapsed ? '▸' : '▾'} {group.label} ({group.files.length})
+                          </button>
+                          {!collapsed && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {group.files.map(file => {
+                                const active = selectedPath === file.path
+                                return (
+                                  <button
+                                    key={file.id}
+                                    onClick={() => openFile(file)}
+                                    className={`px-2 py-1 rounded-full border text-[11px] font-mono max-w-[380px] truncate ${
+                                      active
+                                        ? 'border-blue-400 bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-200'
+                                        : 'border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-zinc-700'
+                                    }`}
+                                    title={file.path}
+                                  >
+                                    {file.relativePath}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
             <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg p-3">
               <p className="text-sm font-medium text-zinc-800 dark:text-slate-200 mb-2">Memory Files</p>
               <div className="space-y-2">
@@ -310,7 +402,8 @@ export default function MemoryManagementPage() {
                 </>
               )}
             </div>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>
