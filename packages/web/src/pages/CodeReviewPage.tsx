@@ -180,7 +180,7 @@ function MindMapPill({ node, isHovered, isOnPath, isExpanded, hasDiffDescendant:
     return (
       <div
         data-pill
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold whitespace-nowrap select-none"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono font-semibold whitespace-nowrap select-none"
         style={{
           backgroundColor: s.bg,
           border: `1.5px solid ${isSelected ? s.text : isHovered ? s.text : s.border}`,
@@ -205,7 +205,7 @@ function MindMapPill({ node, isHovered, isOnPath, isExpanded, hasDiffDescendant:
     return (
       <div
         data-pill
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono whitespace-nowrap select-none"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono whitespace-nowrap select-none"
         style={{
           backgroundColor: 'var(--c-dir-neutral-bg)',
           border: '1px solid var(--c-dir-neutral-border)',
@@ -227,7 +227,7 @@ function MindMapPill({ node, isHovered, isOnPath, isExpanded, hasDiffDescendant:
     return (
       <div
         data-pill
-        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono whitespace-nowrap select-none"
+        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-mono whitespace-nowrap select-none"
         style={{
           backgroundColor: diffAware ? 'var(--c-dir-diff-bg)' : active ? 'var(--c-dir-active-bg)' : 'var(--c-dir-neutral-bg)',
           border: `1px solid ${diffAware ? 'var(--c-dir-diff-border)' : active ? 'var(--c-dir-active-border)' : 'var(--c-dir-neutral-border)'}`,
@@ -249,7 +249,7 @@ function MindMapPill({ node, isHovered, isOnPath, isExpanded, hasDiffDescendant:
   return (
     <div
       data-pill
-      className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-mono whitespace-nowrap select-none"
+      className="inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-mono whitespace-nowrap select-none"
       style={{
         backgroundColor: 'var(--c-dir-neutral-bg)',
         border: '1px solid var(--c-dir-neutral-border)',
@@ -338,6 +338,7 @@ function MindMapBranch({ node, depth, hoveredPath, onHover, onLayoutChange, onFi
         ref={pillRef}
         onMouseEnter={() => onHover(node.path)}
         onClick={handlePillClick}
+        className="rounded-md p-1 -m-1"
       >
         <MindMapPill node={node} isHovered={isHovered} isOnPath={isOnHoverPath} isExpanded={expanded} hasDiffDescendant={hasDiff} isSelected={!!isSelected} />
       </div>
@@ -488,29 +489,58 @@ function diffPrefix(type: DiffLine['type']): string {
   return ' '
 }
 
-function DiffViewer({ file }: { file: AffectedFile }) {
+function DiffViewer({
+  file,
+  selected,
+  onSelectFile,
+}: {
+  file: AffectedFile
+  selected: boolean
+  onSelectFile: (filePath: string) => void
+}) {
   const [collapsed, setCollapsed] = useState(false)
   const diffLines = useMemo(() => file.diff ? parseDiff(file.diff) : [], [file.diff])
 
   if (!file.diff) return null
 
   return (
-    <div className="border border-gray-100 dark:border-zinc-800 rounded-lg overflow-hidden mb-4">
+    <div
+      className="border rounded-lg overflow-hidden mb-4"
+      style={{
+        borderColor: selected ? 'var(--c-blue)' : undefined,
+        boxShadow: selected ? '0 0 0 1px var(--c-blue)' : undefined,
+      }}
+    >
       {/* File header */}
       <div
         className="flex items-center justify-between px-3 py-2 cursor-pointer select-none"
         style={{ backgroundColor: 'var(--c-file-header)', borderBottom: '1px solid var(--c-border-md)' }}
         onClick={() => setCollapsed(c => !c)}
       >
-        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onSelectFile(file.path)
+          }}
+          className="min-w-0 flex items-center gap-2 text-left rounded px-1 py-0.5 -mx-1 hover:bg-black/5 dark:hover:bg-white/5"
+          title={`Open ${file.path}`}
+        >
           <StatusBadge status={file.status} />
-          <span className="text-sm font-mono font-medium" style={{ color: 'var(--c-navy)' }}>{file.path}</span>
+          <span className="text-sm font-mono font-medium truncate" style={{ color: 'var(--c-navy)' }}>{file.path}</span>
           {file.status === 'renamed' && file.oldPath && (
             <span className="text-xs text-zinc-400 dark:text-slate-500">(was {file.oldPath})</span>
           )}
-        </div>
+        </button>
         <span className="text-xs text-zinc-400 dark:text-slate-500">{collapsed ? '▸ show diff' : '▾ hide diff'}</span>
       </div>
+      <button
+        type="button"
+        onClick={() => onSelectFile(file.path)}
+        className="w-full text-left px-3 py-1.5 text-[11px] font-mono border-b border-gray-100 dark:border-zinc-800 text-zinc-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-zinc-900"
+      >
+        Click to focus: {file.path}
+      </button>
 
       {/* Diff lines */}
       {!collapsed && (
@@ -703,8 +733,22 @@ export default function CodeReviewPage() {
               )}
             </div>
             {selectedFile
-              ? filesWithDiff.filter(f => f.path === selectedFile).map(f => <DiffViewer key={f.path} file={f} />)
-              : filesWithDiff.map(f => <DiffViewer key={f.path} file={f} />)
+              ? filesWithDiff.filter(f => f.path === selectedFile).map(f => (
+                <DiffViewer
+                  key={f.path}
+                  file={f}
+                  selected={selectedFile === f.path}
+                  onSelectFile={setSelectedFile}
+                />
+              ))
+              : filesWithDiff.map(f => (
+                <DiffViewer
+                  key={f.path}
+                  file={f}
+                  selected={selectedFile === f.path}
+                  onSelectFile={setSelectedFile}
+                />
+              ))
             }
           </div>
         )}
