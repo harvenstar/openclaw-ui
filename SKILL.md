@@ -44,17 +44,17 @@ Related (non-`/api/review` utility flow):
 
 ## Trigger Routing
 
-Main trigger keyword: `review`.
+Main trigger keyword: `UI review`.
 
-When user intent contains `review ...`, route to the corresponding review flow:
+When user intent contains `UI review ...`, route to the corresponding review flow:
 
-- `review command|shell|script|diff|code` -> `code_review`
-- `review email|draft|reply` -> `email_review`
-- `review plan|steps|execution strategy` -> `plan_review`
-- `review trajectory|run log|what happened` -> `trajectory_review`
-- `review memory|memory update|memory changes` -> `memory_review`
-- `review memory files|browse memory|open memory file` -> `memory_management`
-- `review action|approval|risky action` -> `action_approval`
+- `UI review command|shell|script|diff|code` -> `code_review`
+- `UI review email|draft|reply` -> `email_review`
+- `UI review plan|steps|execution strategy` -> `plan_review`
+- `UI review trajectory|run log|what happened` -> `trajectory_review`
+- `UI review memory|memory update|memory changes` -> `memory_review`
+- `UI review memory files|browse memory|open memory file` -> `memory_management`
+- `UI review action|approval|risky action` -> `action_approval`
 
 If ambiguous, ask a short disambiguation question before creating a session.
 
