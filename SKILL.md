@@ -46,7 +46,11 @@ Related (non-`/api/review` utility flow):
 
 Main trigger keyword: `UI review`.
 
-When user intent contains `UI review ...`, route to the corresponding review flow:
+When user intent contains `UI review ...`, route to the corresponding review flow and open the review UI (do not use `noOpen: true`).
+
+Order does not matter. Example: `code UI review` and `UI code review` are both `code_review`.
+
+Routing rules:
 
 - `UI review command|shell|script|diff|code` -> `code_review`
 - `UI review email|draft|reply` -> `email_review`
@@ -57,6 +61,8 @@ When user intent contains `UI review ...`, route to the corresponding review flo
 - `UI review action|approval|risky action` -> `action_approval`
 
 If ambiguous, ask a short disambiguation question before creating a session.
+
+If user does not explicitly say `UI review`, infer the most appropriate review type from task intent and risk, then create the corresponding review flow automatically.
 
 ## Shared API Flow
 
