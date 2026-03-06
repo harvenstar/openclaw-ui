@@ -417,8 +417,7 @@ export default function MemoryReviewPage() {
   const [extraFilePaths, setExtraFilePaths] = useState<string[]>([])
   const [compressionDecisionMap, setCompressionDecisionMap] = useState<Map<string, CompressionDecision>>(new Map())
   const [modAcceptMap, setModAcceptMap] = useState<Map<string, boolean>>(new Map())
-  const [fullFileContent, setFullFileContent] = useState<string>('')
-  const [fullFileLoading, setFullFileLoading] = useState(false)
+  const [focusedSectionTitle, setFocusedSectionTitle] = useState<string>('')
 
   const applyCatalog = (basePayload: MemoryPayload, nextCatalog: Partial<MemoryPayload>) => ({
     ...basePayload,
@@ -528,17 +527,13 @@ export default function MemoryReviewPage() {
   }, [selectedModification])
 
   useEffect(() => {
-    if (!selectedFile) {
-      setFullFileContent('')
-      return
-    }
-    setFullFileLoading(true)
-    fetch(`/api/memory/file?path=${encodeURIComponent(selectedFile.path)}${buildCatalogQuery(extraMarkdownDirs, extraFilePaths, '')}`)
-      .then(r => r.json())
-      .then(data => setFullFileContent(String(data.content ?? '')))
-      .catch(() => setFullFileContent('Failed to load full file content.'))
-      .finally(() => setFullFileLoading(false))
-  }, [selectedFile?.path, extraMarkdownDirs, extraFilePaths])
+    if (!focusedSectionTitle) return
+    const timer = window.setTimeout(() => {
+      const el = document.querySelector('[data-section-focus="true"]') as HTMLElement | null
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 60)
+    return () => window.clearTimeout(timer)
+  }, [focusedSectionTitle, selectedFileId, diffLines])
 
   const toggleCollapse = (idValue: string) => {
     setCollapsedIds(prev => {
@@ -782,7 +777,10 @@ export default function MemoryReviewPage() {
                 {changedFiles.map(file => (
                   <button
                     key={`changed-chip-${file.id}`}
-                    onClick={() => setSelectedFileId(file.id)}
+                    onClick={() => {
+                      setSelectedFileId(file.id)
+                      setFocusedSectionTitle('')
+                    }}
                     className={`text-xs font-mono px-2 py-1 rounded border ${
                       selectedFileId === file.id
                         ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
@@ -815,7 +813,15 @@ export default function MemoryReviewPage() {
           <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-zinc-800 dark:text-slate-200">Memory Files</p>
-              <button className="text-xs text-blue-500 hover:text-blue-600" onClick={() => setCollapsedIds(new Set())}>Expand All</button>
+              <button
+                className="text-xs text-blue-500 hover:text-blue-600"
+                onClick={() => {
+                  setCollapsedIds(new Set())
+                  setFocusedSectionTitle('')
+                }}
+              >
+                Expand All
+              </button>
             </div>
             <div className="space-y-2">
               {payload.groups.map(group => {
@@ -853,7 +859,10 @@ export default function MemoryReviewPage() {
                                 </button>
                                 <input type="checkbox" checked={includedPaths.has(file.path)} onChange={() => toggleInclude(file.path)} />
                                 <button
-                                  onClick={() => setSelectedFileId(file.id)}
+                                  onClick={() => {
+                                    setSelectedFileId(file.id)
+                                    setFocusedSectionTitle('')
+                                  }}
                                   className={`text-left flex-1 min-w-0 rounded px-1 py-0.5 hover:bg-gray-50 dark:hover:bg-zinc-800 ${
                                     selected ? 'bg-blue-50 dark:bg-blue-950' : ''
                                   }`}
@@ -873,7 +882,11 @@ export default function MemoryReviewPage() {
                                       {file.relativePath}
                                     </span>
                                   </div>
-                                  <div className="mt-1 text-[11px] text-zinc-500 dark:text-slate-400 truncate">
+                                  <div className={`mt-1 text-[11px] truncate ${
+                                    changedFileIds.has(file.id)
+                                      ? 'text-amber-600 dark:text-amber-300'
+                                      : 'text-zinc-500 dark:text-slate-400'
+                                  }`}>
                                     {file.preview || 'No preview.'}
                                   </div>
                                 </button>
@@ -890,8 +903,15 @@ export default function MemoryReviewPage() {
                                   {file.sections.slice(0, 8).map(sec => (
                                     <button
                                       key={sec.id}
-                                      onClick={() => setSelectedFileId(file.id)}
-                                      className="block w-full text-left text-[11px] text-zinc-500 dark:text-slate-400 truncate hover:text-zinc-700 dark:hover:text-slate-200"
+                                      onClick={() => {
+                                        setSelectedFileId(file.id)
+                                        setFocusedSectionTitle(sec.title)
+                                      }}
+                                      className={`block w-full text-left text-[11px] truncate ${
+                                        changedFileIds.has(file.id)
+                                          ? 'text-amber-600 dark:text-amber-300 hover:text-amber-700 dark:hover:text-amber-200'
+                                          : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-700 dark:hover:text-slate-200'
+                                      }`}
                                     >
                                       # {sec.title}
                                     </button>
@@ -925,24 +945,16 @@ export default function MemoryReviewPage() {
                 </div>
 
                 <div className="mb-4">
-                  <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase mb-1">Preview</p>
-                  <p className="text-sm text-zinc-600 dark:text-slate-300">{selectedFile.preview || 'No preview.'}</p>
-                </div>
-
-                <div className="mb-4">
-                  <label className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-slate-300">
-                    <input type="checkbox" checked={includedPaths.has(selectedFile.path)} onChange={() => toggleInclude(selectedFile.path)} />
-                    Keep this file included in future memory reviews
-                  </label>
-                </div>
-
-                <div className="mb-4">
-                  <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase mb-1">Full File</p>
-                  {fullFileLoading ? (
-                    <p className="text-sm text-zinc-500 dark:text-slate-400">Loading full file...</p>
-                  ) : (
-                    <pre className="text-xs whitespace-pre-wrap break-words p-2 max-h-72 overflow-y-auto border border-gray-200 dark:border-zinc-700 rounded bg-zinc-50 dark:bg-zinc-950 text-zinc-700 dark:text-slate-300">{fullFileContent || 'No content.'}</pre>
-                  )}
+                  <button
+                    onClick={() => toggleInclude(selectedFile.path)}
+                    className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                      includedPaths.has(selectedFile.path)
+                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        : 'border-gray-200 bg-white text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-300'
+                    }`}
+                  >
+                    {includedPaths.has(selectedFile.path) ? 'Keep In Next Session' : 'Do Not Keep In Next Session'}
+                  </button>
                 </div>
 
                 <div className="mb-4">
@@ -991,48 +1003,60 @@ export default function MemoryReviewPage() {
                       </label>
                     </div>
                     <p className="text-xs font-mono text-zinc-500 dark:text-slate-400 mb-1">Target: {selectedModification.location}</p>
+                    {focusedSectionTitle && (
+                      <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
+                        Focused section: #{focusedSectionTitle}
+                      </p>
+                    )}
                     <div className="p-2 border border-gray-200 dark:border-zinc-700 rounded bg-gray-50 dark:bg-zinc-950 mb-2">
                       <p className="text-[11px] text-zinc-500 dark:text-slate-400 mb-1">New Generated Content</p>
                       <pre className="text-xs whitespace-pre-wrap break-words text-zinc-700 dark:text-slate-300">{selectedModification.generatedContent}</pre>
                     </div>
                     <div className="border border-gray-200 dark:border-zinc-700 rounded overflow-hidden">
                       <div className="px-2 py-1 text-[11px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-slate-400">Unified Diff</div>
-                      <div className="max-h-80 overflow-y-auto">
+                      <div className="overflow-x-auto">
                         <table className="w-full text-xs font-mono border-collapse">
                           <tbody>
-                            {diffLines.map((line, idx) => (
-                              <tr
-                                key={`${line.type}-${idx}`}
-                                className={line.type === 'add' ? 'bg-green-50 dark:bg-green-950' : line.type === 'remove' ? 'bg-red-50 dark:bg-red-950' : ''}
-                                style={{
-                                  borderLeft: line.type === 'add'
-                                    ? '3px solid rgba(34,197,94,.8)'
-                                    : line.type === 'remove'
-                                      ? '3px solid rgba(239,68,68,.8)'
-                                      : '3px solid transparent',
-                                }}
-                              >
-                                <td className="w-8 text-right px-2 py-0.5 text-zinc-400 dark:text-slate-500 select-none">{idx + 1}</td>
-                                <td className={`w-5 px-1 py-0.5 text-center font-bold ${
-                                  line.type === 'add'
-                                    ? 'text-green-700 dark:text-green-300'
-                                    : line.type === 'remove'
-                                      ? 'text-red-700 dark:text-red-300'
-                                      : 'text-zinc-400 dark:text-slate-500'
-                                }`}>
-                                  {line.type === 'add' ? '+' : line.type === 'remove' ? '−' : ' '}
-                                </td>
-                                <td className={`px-2 py-0.5 whitespace-pre-wrap break-words ${
-                                  line.type === 'add'
-                                    ? 'text-green-700 dark:text-green-300'
-                                    : line.type === 'remove'
-                                      ? 'text-red-700 dark:text-red-300'
-                                      : 'text-zinc-600 dark:text-slate-400'
-                                }`}>
-                                  {line.text}
-                                </td>
-                              </tr>
-                            ))}
+                            {diffLines.map((line, idx) => {
+                              const sectionMatch = focusedSectionTitle.trim().length > 0
+                                && line.text.toLowerCase().includes(focusedSectionTitle.toLowerCase())
+                              return (
+                                <tr
+                                  key={`${line.type}-${idx}`}
+                                  data-section-focus={sectionMatch ? 'true' : undefined}
+                                  className={line.type === 'add' ? 'bg-green-50 dark:bg-green-950' : line.type === 'remove' ? 'bg-red-50 dark:bg-red-950' : ''}
+                                  style={{
+                                    outline: sectionMatch ? '2px solid rgba(245,158,11,.65)' : undefined,
+                                    outlineOffset: sectionMatch ? '-2px' : undefined,
+                                    borderLeft: line.type === 'add'
+                                      ? '3px solid rgba(34,197,94,.8)'
+                                      : line.type === 'remove'
+                                        ? '3px solid rgba(239,68,68,.8)'
+                                        : '3px solid transparent',
+                                  }}
+                                >
+                                  <td className="w-8 text-right px-2 py-0.5 text-zinc-400 dark:text-slate-500 select-none">{idx + 1}</td>
+                                  <td className={`w-5 px-1 py-0.5 text-center font-bold ${
+                                    line.type === 'add'
+                                      ? 'text-green-700 dark:text-green-300'
+                                      : line.type === 'remove'
+                                        ? 'text-red-700 dark:text-red-300'
+                                        : 'text-zinc-400 dark:text-slate-500'
+                                  }`}>
+                                    {line.type === 'add' ? '+' : line.type === 'remove' ? '−' : ' '}
+                                  </td>
+                                  <td className={`px-2 py-0.5 whitespace-pre-wrap break-words ${
+                                    line.type === 'add'
+                                      ? 'text-green-700 dark:text-green-300'
+                                      : line.type === 'remove'
+                                        ? 'text-red-700 dark:text-red-300'
+                                        : 'text-zinc-600 dark:text-slate-400'
+                                  }`}>
+                                    {line.text}
+                                  </td>
+                                </tr>
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
