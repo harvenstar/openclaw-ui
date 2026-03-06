@@ -245,17 +245,33 @@ const childEnv = { ...process.env, PORT: resolvedPort, AGENTCLICK_PORT: resolved
 console.log(`[agentclick] Using AGENTCLICK_PORT=${resolvedPort}`)
 
 let tunnelProcess = null
+let cloudflaredBinaryPath = null
+
+async function spawnTunnel(port) {
+  try {
+    const { url, process: cf } = await startTunnel(cloudflaredBinaryPath, port)
+    tunnelProcess = cf
+    printTunnelBanner(url)
+    cf.on('exit', code => {
+      tunnelProcess = null
+      if (cloudflaredBinaryPath && serverProcess && !serverProcess.killed) {
+        console.warn(`\n[agentclick] Tunnel exited (code ${code}), reconnecting in 3s...`)
+        setTimeout(() => spawnTunnel(port), 3000)
+      }
+    })
+  } catch (err) {
+    console.warn(`[agentclick] Tunnel failed: ${err.message}, retrying in 10s...`)
+    setTimeout(() => spawnTunnel(port), 10_000)
+  }
+}
 
 if (tunnelEnabled) {
   try {
-    const binaryPath = await ensureCloudflared()
+    cloudflaredBinaryPath = await ensureCloudflared()
     console.log('[agentclick] Starting tunnel...')
-    const { url, process: cf } = await startTunnel(binaryPath, Number(resolvedPort))
-    tunnelProcess = cf
-    childEnv.WEB_ORIGIN = url
-    printTunnelBanner(url)
+    await spawnTunnel(Number(resolvedPort))
   } catch (err) {
-    console.warn(`[agentclick] Tunnel failed: ${err.message}`)
+    console.warn(`[agentclick] Tunnel setup failed: ${err.message}`)
     console.warn('[agentclick] Continuing without tunnel (local only).')
   }
 }
@@ -279,6 +295,7 @@ serverProcess.on('exit', code => {
 function shutdown() {
   if (serverProcess && !serverProcess.killed) try { serverProcess.kill('SIGTERM') } catch {}
   if (tunnelProcess && !tunnelProcess.killed) try { tunnelProcess.kill('SIGTERM') } catch {}
+  cloudflaredBinaryPath = null // prevent reconnect loop after intentional shutdown
 }
 
 process.on('SIGINT', shutdown)
