@@ -390,9 +390,9 @@ export default function ReviewPage() {
             <button onClick={() => navigate('/')} className="text-sm text-blue-400 hover:text-blue-500 transition-colors">← Back</button>
           </div>
         )}
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1 min-h-0 flex-col md:flex-row">
         {/* Left Panel — Inbox List */}
-        <div className="w-72 shrink-0 bg-white dark:bg-zinc-900 border-r border-gray-100 dark:border-zinc-800 overflow-y-auto">
+        <div className="w-full md:w-72 md:shrink-0 bg-white dark:bg-zinc-900 border-b md:border-b-0 md:border-r border-gray-100 dark:border-zinc-800 overflow-y-auto max-h-[30vh] md:max-h-full">
           {!isCompleted && (
             <button onClick={() => navigate('/')} className="text-sm text-zinc-400 dark:text-slate-500 hover:text-zinc-600 dark:hover:text-slate-300 transition-colors p-4 block border-b border-gray-50 dark:border-zinc-800 w-full text-left">← Back</button>
           )}
@@ -425,7 +425,7 @@ export default function ReviewPage() {
                     {/* Reply — primary: dark navy fill */}
                     <button
                       onClick={e => { e.stopPropagation(); handleReply(email) }}
-                      className="text-xs font-semibold px-3 py-1 rounded-full transition-all hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
                       style={{ backgroundColor: 'var(--c-navy)', color: 'var(--c-bg)', boxShadow: '0 1px 3px rgba(29,53,87,0.25)' }}
                       aria-label="Reply to email"
                     >
@@ -434,7 +434,7 @@ export default function ReviewPage() {
                     {/* Read — secondary: soft teal fill */}
                     <button
                       onClick={e => { e.stopPropagation(); handleMarkAsRead(email.id) }}
-                      className="text-xs font-medium px-3 py-1 rounded-full transition-all hover:shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                      className="text-xs font-medium px-3 py-1.5 rounded-full transition-all hover:shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
                       style={{ backgroundColor: 'var(--c-accent)', color: 'var(--c-text)' }}
                       aria-label="Mark as read"
                     >
@@ -443,7 +443,7 @@ export default function ReviewPage() {
                     {/* Summary — ghost: outlined */}
                     <button
                       onClick={e => { e.stopPropagation(); handleSummary(email) }}
-                      className="text-xs font-medium px-3 py-1 rounded-full transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                      className="text-xs font-medium px-3 py-1.5 rounded-full transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
                       style={{ border: '1.5px solid var(--c-blue)', color: 'var(--c-blue)', backgroundColor: 'transparent' }}
                       aria-label="View summary"
                     >

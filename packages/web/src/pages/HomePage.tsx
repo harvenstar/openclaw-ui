@@ -149,9 +149,9 @@ export default function HomePage() {
 
         <div className="mb-8">
           <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase tracking-wider mb-1">agentclick</p>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h1 className="text-xl font-semibold text-zinc-900 dark:text-slate-100">Pending</h1>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <button
                 onClick={() => navigate('/memory-management')}
                 className="flex items-center gap-1.5 text-sm text-zinc-400 dark:text-slate-500 hover:text-zinc-600 dark:hover:text-slate-300 transition-colors"
