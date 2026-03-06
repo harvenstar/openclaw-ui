@@ -71,6 +71,12 @@ interface MemoryTreeNode {
   children?: MemoryTreeNode[]
 }
 
+interface RankedSection {
+  id: string
+  title: string
+  changed: boolean
+}
+
 function formatBytes(size: number): string {
   if (size < 1024) return `${size} B`
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
@@ -393,6 +399,22 @@ function buildCatalogQuery(extraMarkdownDirs: string[], extraFilePaths: string[]
   return qs ? `?${qs}` : ''
 }
 
+function rankSections(file: MemoryFile, modification?: MemoryModification | null): RankedSection[] {
+  const haystack = `${modification?.oldContent ?? ''}\n${modification?.newContent ?? ''}\n${modification?.generatedContent ?? ''}`.toLowerCase()
+  const ranked = file.sections.map(section => ({
+    ...section,
+    changed: section.title.trim().length > 0 && haystack.includes(section.title.toLowerCase()),
+  }))
+  ranked.sort((a, b) => {
+    if (a.changed !== b.changed) return a.changed ? -1 : 1
+    return a.title.localeCompare(b.title)
+  })
+  if (!ranked.some(section => section.changed) && modification && ranked.length > 0) {
+    ranked[0] = { ...ranked[0], changed: true }
+  }
+  return ranked
+}
+
 export default function MemoryReviewPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -520,6 +542,14 @@ export default function MemoryReviewPage() {
     if (!selectedFileId || !payload) return null
     return payload.modifications.find(mod => mod.fileId === selectedFileId) ?? null
   }, [payload, selectedFileId])
+
+  const modificationByFileId = useMemo(() => {
+    const map = new Map<string, MemoryModification>()
+    for (const modification of payload?.modifications ?? []) {
+      map.set(modification.fileId, modification)
+    }
+    return map
+  }, [payload])
 
   const diffLines = useMemo(() => {
     if (!selectedModification) return []
@@ -900,22 +930,46 @@ export default function MemoryReviewPage() {
                                       <span key={cat} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-slate-400">{cat}</span>
                                     ))}
                                   </div>
-                                  {file.sections.slice(0, 8).map(sec => (
-                                    <button
-                                      key={sec.id}
-                                      onClick={() => {
-                                        setSelectedFileId(file.id)
-                                        setFocusedSectionTitle(sec.title)
-                                      }}
-                                      className={`block w-full text-left text-[11px] truncate ${
-                                        changedFileIds.has(file.id)
-                                          ? 'text-amber-600 dark:text-amber-300 hover:text-amber-700 dark:hover:text-amber-200'
-                                          : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-700 dark:hover:text-slate-200'
-                                      }`}
-                                    >
-                                      # {sec.title}
-                                    </button>
-                                  ))}
+                                  {(() => {
+                                    const rankedSections = rankSections(file, modificationByFileId.get(file.id))
+                                    const previewToggleId = `${fileNodeId}:subtitle-preview`
+                                    const previewExpanded = collapsedIds.has(previewToggleId)
+                                    const changedSections = rankedSections.filter(section => section.changed)
+                                    const unchangedSections = rankedSections.filter(section => !section.changed)
+                                    const visibleSections = previewExpanded
+                                      ? rankedSections.slice(0, 8)
+                                      : [...changedSections.slice(0, 4), ...(changedSections.length === 0 ? unchangedSections.slice(0, 1) : [])]
+                                    const hiddenCount = Math.max(0, Math.min(rankedSections.length, 8) - visibleSections.length)
+                                    return (
+                                      <>
+                                        {visibleSections.map(sec => (
+                                          <button
+                                            key={sec.id}
+                                            onClick={() => {
+                                              setSelectedFileId(file.id)
+                                              setFocusedSectionTitle(sec.title)
+                                            }}
+                                            className={`block w-full text-left text-[11px] truncate ${
+                                              sec.changed
+                                                ? 'text-amber-600 dark:text-amber-300 hover:text-amber-700 dark:hover:text-amber-200 font-medium'
+                                                : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-700 dark:hover:text-slate-200'
+                                            }`}
+                                          >
+                                            {sec.changed ? '# ' : '... '}
+                                            {sec.title}
+                                          </button>
+                                        ))}
+                                        {hiddenCount > 0 && (
+                                          <button
+                                            onClick={() => toggleCollapse(previewToggleId)}
+                                            className="block w-full text-left text-[11px] text-zinc-400 dark:text-slate-500 hover:text-zinc-700 dark:hover:text-slate-200"
+                                          >
+                                            {previewExpanded ? 'Fold subtitle preview' : `... unfold ${hiddenCount} more subtitle${hiddenCount > 1 ? 's' : ''}`}
+                                          </button>
+                                        )}
+                                      </>
+                                    )
+                                  })()}
                                 </div>
                               )}
                             </div>
