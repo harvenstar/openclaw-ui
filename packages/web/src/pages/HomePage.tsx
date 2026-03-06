@@ -174,6 +174,13 @@ export default function HomePage() {
                 <span className="text-zinc-300 dark:text-zinc-600">›</span>
               </button>
               <button
+                onClick={() => navigate('/icon-test')}
+                className="flex items-center gap-1.5 text-sm text-zinc-400 dark:text-slate-500 hover:text-zinc-600 dark:hover:text-slate-300 transition-colors"
+              >
+                Icon Test
+                <span className="text-zinc-300 dark:text-zinc-600">›</span>
+              </button>
+              <button
                 onClick={() => navigate('/completed')}
                 className="flex items-center gap-1.5 text-sm text-zinc-400 dark:text-slate-500 hover:text-zinc-600 dark:hover:text-slate-300 transition-colors"
               >

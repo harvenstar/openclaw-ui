@@ -15,6 +15,7 @@ import MemoryTestPage from './pages/MemoryTestPage'
 import PortsPage from './pages/PortsPage'
 import PreferencesPage from './pages/PreferencesPage'
 import CompletedPage from './pages/CompletedPage'
+import IconTestPage from './pages/IconTestPage'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -112,6 +113,7 @@ export default function App() {
         <Route path="/ports" element={<PortsPage />} />
         <Route path="/preferences" element={<PreferencesPage />} />
         <Route path="/completed" element={<CompletedPage />} />
+        <Route path="/icon-test" element={<IconTestPage />} />
       </Routes>
     </BrowserRouter>
   )

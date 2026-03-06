@@ -1,5 +1,7 @@
 # AgentClick
 
+![AgentClick icon](./icon.png)
+
 AI agents fail silently and take irreversible actions. AgentClick puts a human review step between your agent and the world.
 
 [![npm version](https://img.shields.io/npm/v/agentclick)](https://www.npmjs.com/package/agentclick)
