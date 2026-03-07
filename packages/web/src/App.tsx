@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ReviewPage from './pages/ReviewPage'
+import EmailTestPage from './pages/EmailTestPage'
 import ApprovalPage from './pages/ApprovalPage'
 import CodeReviewPage from './pages/CodeReviewPage'
 import HomePage from './pages/HomePage'
@@ -100,6 +101,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/review/:id" element={<ReviewPage />} />
+        <Route path="/email-test" element={<EmailTestPage />} />
         <Route path="/approval/:id" element={<ApprovalPage />} />
         <Route path="/code-review/:id" element={<CodeReviewPage />} />
         <Route path="/form-review/:id" element={<FormReviewPage />} />
