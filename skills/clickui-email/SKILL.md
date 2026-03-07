@@ -1,27 +1,27 @@
 ---
 name: clickui-email
-description: Use this skill when the user needs to review, triage, read, or reply to email in AgentClick UI before anything is sent.
+description: Use this skill when the user needs to triage, read, or reply to email in an AgentClick live session before anything is sent.
 ---
 
-# ClickUI Email Review
+# ClickUI Email Live Session
 
 ## Trigger Conditions
 
-Use this skill when the user wants email handled in AgentClick UI instead of chat.
+Use this skill when the user wants email handled in an AgentClick live session instead of chat.
 
 Common triggers:
 - "write the email and let me review first"
 - "before sending, let me review"
 - "draft it and I will approve"
 - "review my inbox in UI"
-- "reply in browser"
-- "email UI review"
+- "reply in live session"
+- "email live session"
 
-If the task is email work plus human review in UI, use this skill over generic chat drafting.
+If the task is email work plus live session handling in UI, use this skill over generic chat drafting.
 
 ## Core Rules
 
-- Always create an AgentClick review session with `type: "email_review"`.
+- Always create an AgentClick live session with `type: "email_review"`.
 - Treat the AgentClick page as the active email client for this task.
 - The same agent that creates the session must monitor and update it.
 - Do not start a helper process, fake monitor, server-side monitor, or detached subagent monitor.
@@ -82,7 +82,7 @@ node skills/clickui-email/scripts/fetch_gmail_inbox_parallel.mjs \
 Guidelines:
 - Prefer 10 recent emails unless the user asked for a different count.
 - Use this script first when loading multiple emails because it fetches in parallel.
-- The script should produce inbox JSON for the review payload. Load that file instead of rebuilding the inbox array inline when possible.
+- The script should produce inbox JSON for the live session payload. Load that file instead of rebuilding the inbox array inline when possible.
 - Normalize categories to Gmail-style values when possible: `Primary`, `Social`, `Promotions`, `Updates`, `Forums`.
 - Keep full email text in `body` and only use `preview` for the sidebar.
 - If you need one-off message detail beyond the script output, use `gog gmail get <message_id>`.
@@ -107,7 +107,7 @@ Suggested inbox item shape:
 }
 ```
 
-## Step 3: Create the review session
+## Step 3: Create the live session
 
 Write the payload to disk before POSTing.
 
