@@ -64,6 +64,7 @@ interface ReviewSessionPayload {
 
 interface Action {
   type: 'delete' | 'rewrite'
+  shouldLearn?: boolean
   paragraphId: string
   reason?: string
   instruction?: string
@@ -202,6 +203,7 @@ export default function ReviewPage() {
   const [actions, setActions] = useState<Action[]>([])
   const [states, setStates] = useState<Record<string, ParagraphState>>({})
   const [rewriteInput, setRewriteInput] = useState<Record<string, string>>({})
+  const [rewriteLearn, setRewriteLearn] = useState<Record<string, boolean>>({})
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -390,6 +392,11 @@ export default function ReviewPage() {
   const confirmRewrite = (pid: string) => {
     const editedText = rewriteInput[pid]?.trim()
     if (!editedText) return
+    setActions(a => a.map(x =>
+      x.paragraphId === pid && x.type === 'rewrite'
+        ? { ...x, instruction: editedText, ...(rewriteLearn[pid] ? { shouldLearn: true } : {}) }
+        : x
+    ))
     setStates(s => ({ ...s, [pid]: 'normal' }))
   }
 
@@ -760,9 +767,15 @@ export default function ReviewPage() {
                 value={rewriteInput[p.id] || ''}
                 onChange={e => setRewriteInput(r => ({ ...r, [p.id]: e.target.value }))}
               />
-              <div className="flex gap-2">
-                <button onClick={() => confirmRewrite(p.id)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300">Apply</button>
-                <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 rounded">Cancel</button>
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-1.5 text-xs text-zinc-400 dark:text-slate-500 cursor-pointer select-none">
+                  <input type="checkbox" checked={!!rewriteLearn[p.id]} onChange={e => setRewriteLearn(r => ({ ...r, [p.id]: e.target.checked }))} className="rounded" />
+                  Remember this style
+                </label>
+                <div className="flex gap-2">
+                  <button onClick={() => confirmRewrite(p.id)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300">Apply</button>
+                  <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 rounded">Cancel</button>
+                </div>
               </div>
             </div>
           </div>
@@ -1391,9 +1404,15 @@ export default function ReviewPage() {
                   value={rewriteInput[p.id] || ''}
                   onChange={e => setRewriteInput(r => ({ ...r, [p.id]: e.target.value }))}
                 />
-                <div className="flex gap-2">
-                  <button onClick={() => confirmRewrite(p.id)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300">Apply</button>
-                  <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 rounded">Cancel</button>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="flex items-center gap-1.5 text-xs text-zinc-400 dark:text-slate-500 cursor-pointer select-none">
+                    <input type="checkbox" checked={!!rewriteLearn[p.id]} onChange={e => setRewriteLearn(r => ({ ...r, [p.id]: e.target.checked }))} className="rounded" />
+                    Remember this style
+                  </label>
+                  <div className="flex gap-2">
+                    <button onClick={() => confirmRewrite(p.id)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300">Apply</button>
+                    <button onClick={() => undoParagraph(p.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 rounded">Cancel</button>
+                  </div>
                 </div>
               </div>
             )
