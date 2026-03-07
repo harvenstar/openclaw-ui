@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import { promisify } from 'util'
-import { learnFromDeletions, learnFromTrajectoryRevisions, learnFromCodeRejection, learnFromActionRejection, getLearnedPreferences, clearPreferences, deletePreference } from './preference.js'
+import { learnFromDeletions, learnFromRewrite, learnFromTrajectoryRevisions, learnFromCodeRejection, learnFromActionRejection, getLearnedPreferences, clearPreferences, deletePreference } from './preference.js'
 import { createSession, getSession, listSessions, completeSession, setSessionRewriting, updateSessionPageStatus, updateSessionPayload } from './store.js'
 import {
   buildMemoryCatalog,
@@ -998,8 +998,9 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
     updateSessionPageStatus(req.params.id, { state: 'submitted', updatedAt: Date.now() })
     console.log(`[agentclick] Session ${session.id} → rewriting:`, JSON.stringify(req.body, null, 2))
     // Learn from deletions even in rewriting rounds
-    const rewriteActions = (req.body.actions ?? []) as Array<{ type: string; paragraphId: string; reason?: string; instruction?: string }>
+    const rewriteActions = (req.body.actions ?? []) as Array<{ type: string; paragraphId: string; reason?: string; instruction?: string; shouldLearn?: boolean }>
     learnFromDeletions(rewriteActions, session.payload as Record<string, unknown>)
+    learnFromRewrite(rewriteActions, session.payload as Record<string, unknown>)
     res.json({ ok: true, rewriting: true })
     return
   }
@@ -1010,8 +1011,9 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
   console.log(`[agentclick] Session ${session.id} completed:`, JSON.stringify(req.body, null, 2))
 
   // Learn from delete actions and persist rules to MEMORY.md
-  const actions = (req.body.actions ?? []) as Array<{ type: string; paragraphId: string; reason?: string; instruction?: string }>
+  const actions = (req.body.actions ?? []) as Array<{ type: string; paragraphId: string; reason?: string; instruction?: string; shouldLearn?: boolean }>
   learnFromDeletions(actions, session.payload as Record<string, unknown>)
+  learnFromRewrite(actions, session.payload as Record<string, unknown>)
 
   // Learn from trajectory revisions
   const revisions = req.body.revisions as Array<{ stepId: string; action: 'mark_wrong' | 'provide_guidance' | 'skip'; correction?: string; guidance?: string; shouldLearn?: boolean }> | undefined
