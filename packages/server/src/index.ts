@@ -705,6 +705,12 @@ function buildActionSummary(result: Record<string, unknown>): string {
   if (result.regenerate) {
     lines.push('- User requested full regeneration.')
   }
+  if (result.readMore) {
+    const requestedCategories = Array.isArray(result.requestedCategories)
+      ? result.requestedCategories.filter((item): item is string => typeof item === 'string')
+      : []
+    lines.push(`- User requested more emails${requestedCategories.length > 0 ? ` for categories: ${requestedCategories.join(', ')}` : ''}.`)
+  }
 
   const intents = (result.selectedIntents ?? []) as Array<{ id: string; accepted: boolean }>
   if (intents.length > 0) {

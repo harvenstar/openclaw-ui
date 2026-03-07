@@ -54,6 +54,12 @@ interface InboxPayload {
   draft: DraftPayload
 }
 
+interface ReviewSessionPayload {
+  inbox?: EmailItem[]
+  draft?: DraftPayload
+  [key: string]: unknown
+}
+
 interface Action {
   type: 'delete' | 'rewrite'
   paragraphId: string
@@ -70,6 +76,7 @@ interface SummaryResponse {
 }
 
 type ParagraphState = 'normal' | 'deleted' | 'rewriting'
+type PendingAgentAction = 'regenerate' | 'readMore' | null
 
 // Keys must match REASON_LABELS in preference.ts
 const REASONS = [
@@ -167,6 +174,16 @@ function fallbackIntentSuggestions(email: EmailItem | null): IntentSuggestion[] 
   ]
 }
 
+function mergeInboxEmails(currentInbox: EmailItem[], incomingInbox: EmailItem[]): EmailItem[] {
+  const merged = new Map<string, EmailItem>()
+  currentInbox.forEach(email => merged.set(email.id, email))
+  incomingInbox.forEach(email => {
+    const existing = merged.get(email.id)
+    merged.set(email.id, existing ? { ...existing, ...email } : email)
+  })
+  return Array.from(merged.values()).sort((a, b) => b.timestamp - a.timestamp)
+}
+
 export default function ReviewPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -200,6 +217,8 @@ export default function ReviewPage() {
   const [summaryData, setSummaryData] = useState<SummaryResponse | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [pendingAgentAction, setPendingAgentAction] = useState<PendingAgentAction>(null)
 
   const resetEditState = useCallback(() => {
     setActions([])
@@ -237,15 +256,28 @@ export default function ReviewPage() {
         const data = await fetch(`/api/sessions/${id}`).then(r => r.json())
         if (data.revision > revisionRef.current) {
           revisionRef.current = data.revision
-          setPayload(data.payload as EmailPayload | InboxPayload)
+          setPayload(currentPayload => {
+            if (pendingAgentAction !== 'readMore') return data.payload as EmailPayload | InboxPayload
+            if (!currentPayload || !('inbox' in currentPayload) || !Array.isArray(currentPayload.inbox)) {
+              return data.payload as EmailPayload | InboxPayload
+            }
+            const nextPayload = data.payload as ReviewSessionPayload
+            if (!Array.isArray(nextPayload.inbox)) return data.payload as EmailPayload | InboxPayload
+            return {
+              ...nextPayload,
+              inbox: mergeInboxEmails(currentPayload.inbox, nextPayload.inbox),
+              draft: nextPayload.draft ?? currentPayload.draft,
+            } as InboxPayload
+          })
           resetEditState()
           setWaitingForRewrite(false)
+          setPendingAgentAction(null)
           setRightView('draft')
         }
       } catch { /* ignore polling errors */ }
     }, 1500)
     return () => clearInterval(interval)
-  }, [waitingForRewrite, id, resetEditState])
+  }, [waitingForRewrite, id, pendingAgentAction, resetEditState])
 
   // Cmd+Enter to confirm & send
   useEffect(() => {
@@ -264,7 +296,7 @@ export default function ReviewPage() {
     setActions(a => [...a.filter(x => x.paragraphId !== pid), { type: 'delete', paragraphId: pid, reason: reasonKey }])
   }
 
-  const startRewrite = (pid: string) => {
+  const startEdit = (pid: string) => {
     const sourceParagraph = hasInbox
       ? activeDraftForState?.paragraphs.find(paragraph => paragraph.id === pid)
       : (payload as EmailPayload | null)?.paragraphs?.find(paragraph => paragraph.id === pid)
@@ -275,11 +307,22 @@ export default function ReviewPage() {
     }))
   }
 
+  const markParagraphForRewrite = (pid: string) => {
+    const existing = actions.find(action => action.paragraphId === pid && action.type === 'rewrite')
+    if (existing) {
+      setActions(current => current.filter(action => !(action.paragraphId === pid && action.type === 'rewrite')))
+      return
+    }
+    setActions(current => [
+      ...current.filter(action => action.paragraphId !== pid || action.type !== 'rewrite'),
+      { type: 'rewrite', paragraphId: pid, instruction: 'Rewrite this paragraph' },
+    ])
+  }
+
   const confirmRewrite = (pid: string) => {
     const editedText = rewriteInput[pid]?.trim()
     if (!editedText) return
     setStates(s => ({ ...s, [pid]: 'normal' }))
-    setActions(a => [...a.filter(x => x.paragraphId !== pid), { type: 'rewrite', paragraphId: pid, instruction: editedText }])
   }
 
   const undoParagraph = (pid: string) => {
@@ -331,6 +374,37 @@ export default function ReviewPage() {
     }
   }
 
+  const requestMoreEmails = async () => {
+    if (!hasInbox) return
+    setSubmitting(true)
+    setPendingAgentAction('readMore')
+    const result = await fetch(`/api/sessions/${id}/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        confirmed: false,
+        regenerate: true,
+        readMore: true,
+        requestedCategories: selectedCategories,
+        currentlyLoadedEmailIds: (payload as InboxPayload).inbox.map(email => email.id),
+        currentlyVisibleEmailCount: (payload as InboxPayload).inbox.filter(email =>
+          email.unread !== false &&
+          !markedAsRead.includes(email.id) &&
+          (selectedCategories.length === 0 || selectedCategories.includes(normalizeCategory(email.category)))
+        ).length,
+      }),
+    }).then(r => r.json())
+
+    if (result.rewriting) {
+      setWaitingForRewrite(true)
+      setSubmitting(false)
+      return
+    }
+
+    setPendingAgentAction(null)
+    setSubmitting(false)
+  }
+
   const submit = async (confirmed: boolean) => {
     setSubmitting(true)
     const hasInbox = payload && 'inbox' in payload && Array.isArray((payload as InboxPayload).inbox)
@@ -369,6 +443,7 @@ export default function ReviewPage() {
 
     if (!confirmed && result.rewriting) {
       // Regenerate: wait for agent to update payload
+      setPendingAgentAction('regenerate')
       setWaitingForRewrite(true)
       setSubmitting(false)
       return
@@ -460,6 +535,7 @@ export default function ReviewPage() {
       paragraphs.map(p => {
         const state = states[p.id] || 'normal'
         const action = actions.find(a => a.paragraphId === p.id)
+        const rewriteRequested = action?.type === 'rewrite'
         const editedValue = rewriteInput[p.id]
         const hasEditedValue = typeof editedValue === 'string' && editedValue.trim().length > 0 && editedValue !== p.content
 
@@ -509,14 +585,23 @@ export default function ReviewPage() {
               <p className={`text-sm leading-relaxed whitespace-pre-wrap ${hasEditedValue ? 'text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-slate-300'}`}>
                 {hasEditedValue ? editedValue : p.content}
               </p>
+              {rewriteRequested && (
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">Marked for agent rewrite on regenerate.</p>
+              )}
             </div>
             <div className="flex justify-end gap-1">
               <button
-                onClick={() => startRewrite(p.id)}
+                onClick={() => markParagraphForRewrite(p.id)}
                 style={{ color: 'var(--c-blue)' }}
                 className="text-xs font-medium px-2 py-1 rounded transition-opacity hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-1"
               >
-                Rewrite
+                {rewriteRequested ? 'Unmark Rewrite' : 'Rewrite'}
+              </button>
+              <button
+                onClick={() => startEdit(p.id)}
+                className="text-xs font-medium px-2 py-1 rounded transition-opacity hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-1 text-zinc-500 dark:text-slate-400"
+              >
+                Edit
               </button>
               <DeleteButton onConfirm={(reasonKey) => deleteParagraph(p.id, reasonKey)} />
             </div>
@@ -546,29 +631,50 @@ export default function ReviewPage() {
               </p>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-wider text-zinc-400 dark:text-slate-500 mb-2">Filter Categories</p>
-              <div className="flex flex-wrap gap-2">
-                {GMAIL_CATEGORIES.map(category => {
-                  const selected = selectedCategories.includes(category)
-                  return (
-                    <button
-                      key={category}
-                      onClick={() => setSelectedCategories(current => selected ? current.filter(value => value !== category) : [...current, category])}
-                      className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                        selected
-                          ? `${categoryBadge(category)} border-transparent`
-                          : 'border-gray-200 dark:border-zinc-700 text-zinc-500 dark:text-slate-400 bg-white dark:bg-zinc-950'
-                      }`}
-                    >
-                      {category}
-                    </button>
-                  )
-                })}
-              </div>
+              <button
+                type="button"
+                onClick={() => setFilterOpen(current => !current)}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <p className="text-[11px] uppercase tracking-wider text-zinc-400 dark:text-slate-500">Filter Categories</p>
+                <span className="text-[11px] text-zinc-400 dark:text-slate-500">{filterOpen ? 'Hide' : 'Show'}</span>
+              </button>
+              {filterOpen && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {GMAIL_CATEGORIES.map(category => {
+                    const selected = selectedCategories.includes(category)
+                    return (
+                      <button
+                        key={category}
+                        onClick={() => setSelectedCategories(current => selected ? current.filter(value => value !== category) : [...current, category])}
+                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                          selected
+                            ? `${categoryBadge(category)} border-transparent`
+                            : 'border-gray-200 dark:border-zinc-700 text-zinc-500 dark:text-slate-400 bg-white dark:bg-zinc-950'
+                        }`}
+                      >
+                        {category}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
             <p className="text-[11px] text-zinc-400 dark:text-slate-500">
               Showing {visibleEmails.length} of {filteredEmails.length} filtered unread emails
             </p>
+            <button
+              type="button"
+              onClick={requestMoreEmails}
+              disabled={submitting || waitingForRewrite}
+              className={`w-full text-xs font-medium px-3 py-2 rounded-lg border transition-colors ${
+                submitting || waitingForRewrite
+                  ? 'opacity-50 cursor-not-allowed border-gray-200 dark:border-zinc-700 text-zinc-400 dark:text-slate-500'
+                  : 'border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950'
+              }`}
+            >
+              Read More
+            </button>
           </div>
           {visibleEmails.length === 0 ? (
             <p className="text-sm text-zinc-400 dark:text-slate-500 p-4">No unread emails.</p>
@@ -883,7 +989,9 @@ export default function ReviewPage() {
                 {waitingForRewrite && (
                   <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 rounded-lg flex items-center gap-3">
                     <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                    <p className="text-sm text-blue-600 dark:text-blue-400">Agent is rewriting the draft...</p>
+                    <p className="text-sm text-blue-600 dark:text-blue-400">
+                      {pendingAgentAction === 'readMore' ? 'Agent is loading more emails...' : 'Agent is rewriting the draft...'}
+                    </p>
                   </div>
                 )}
 
@@ -995,6 +1103,7 @@ export default function ReviewPage() {
           {legacyPayload.paragraphs.map(p => {
             const state = states[p.id] || 'normal'
             const action = actions.find(a => a.paragraphId === p.id)
+            const rewriteRequested = action?.type === 'rewrite'
             const editedValue = rewriteInput[p.id]
             const hasEditedValue = typeof editedValue === 'string' && editedValue.trim().length > 0 && editedValue !== p.content
 
@@ -1042,13 +1151,22 @@ export default function ReviewPage() {
                   <p className={`text-sm leading-relaxed whitespace-pre-wrap ${hasEditedValue ? 'text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-slate-300'}`}>
                     {hasEditedValue ? editedValue : p.content}
                   </p>
+                  {rewriteRequested && (
+                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">Marked for agent rewrite on regenerate.</p>
+                  )}
                 </div>
                 <div className="flex justify-end gap-1">
                   <button
-                    onClick={() => startRewrite(p.id)}
+                    onClick={() => markParagraphForRewrite(p.id)}
                     className="text-xs text-zinc-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
                   >
-                    Rewrite
+                    {rewriteRequested ? 'Unmark Rewrite' : 'Rewrite'}
+                  </button>
+                  <button
+                    onClick={() => startEdit(p.id)}
+                    className="text-xs text-zinc-500 dark:text-slate-400 hover:text-zinc-700 dark:hover:text-slate-200 px-2 py-1 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300"
+                  >
+                    Edit
                   </button>
                   <DeleteButton onConfirm={(reasonKey) => deleteParagraph(p.id, reasonKey)} />
                 </div>
