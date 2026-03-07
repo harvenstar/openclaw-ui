@@ -103,9 +103,14 @@ Suggested inbox item shape:
   "headers": {
     "date": "Sat, 7 Mar 2026 10:30:00 -0500"
   },
-  "read": false
+  "read": false,
+  "gmailThreadId": "thread-id-from-gmail",
+  "gmailMessageId": "message-id-from-gmail"
 }
 ```
+
+Required fields for sending:
+- `gmailThreadId` and `gmailMessageId` are **required** for the server-side email send endpoint (`/api/sessions/:id/email-send`) to create a Gmail draft reply and send it. The parallel fetch script produces these automatically.
 
 ## Step 3: Create the live session
 
@@ -188,6 +193,28 @@ If the result indicates `requestReplyDraft: true` for an email:
 - PUT the finished draft back into the same session
 - do not create a new session
 
+**Important:** The reply draft must be placed **on the email item itself**, not in `payload.draft`. The UI reads `replyState`, `replyDraft`, and `replyUnread` from the individual email object in the inbox array.
+
+Reply draft fields on the email item:
+```json
+{
+  "id": "gmail-message-id",
+  "replyState": "ready",
+  "replyUnread": false,
+  "replyDraft": {
+    "replyTo": "sender@example.com",
+    "to": "sender@example.com",
+    "subject": "Re: Original subject",
+    "paragraphs": [
+      {"id": "p1", "content": "Paragraph 1"},
+      {"id": "p2", "content": "Paragraph 2"}
+    ]
+  }
+}
+```
+
+Valid `replyState` values: `"idle"` (default), `"loading"` (agent is generating), `"ready"` (draft available).
+
 The UI expects:
 - lazy reply generation
 - folded reply draft by default
@@ -220,11 +247,28 @@ If the user edits draft paragraphs in the page:
 
 Always write the updated payload to a temp file before PUT.
 
+When updating after a reply request, place the draft on the email item (not in `payload.draft`):
+
 ```bash
 cat > /tmp/clickui_email_payload.json <<'JSON'
 {
   "payload": {
-    "inbox": [],
+    "inbox": [
+      {
+        "id": "target-email-id",
+        "replyState": "ready",
+        "replyUnread": false,
+        "replyDraft": {
+          "replyTo": "sender@example.com",
+          "to": "sender@example.com",
+          "subject": "Re: Original subject",
+          "paragraphs": [
+            {"id": "p1", "content": "Paragraph 1"},
+            {"id": "p2", "content": "Paragraph 2"}
+          ]
+        }
+      }
+    ],
     "draft": {
       "replyTo": "sender@example.com",
       "to": "sender@example.com",
@@ -250,11 +294,13 @@ Rules:
 
 ## Completion Rules
 
-When the user confirms:
-- treat the session as approved work
-- send the final email if that is part of the task
-- sync Gmail read state if the task requires it
+When the user clicks Confirm & Send in the UI:
+- the frontend calls `POST /api/sessions/:id/email-send` which creates a Gmail draft and sends it server-side via `gog`
+- it also syncs read state for marked-as-read emails
+- the agent does **not** need to send the email — the server handles it
+- the agent should treat the session as approved work and continue monitoring for further actions
 - do not ask the user again if they already confirmed in UI
+- for the send to work, inbox emails **must** include `gmailThreadId` and `gmailMessageId` (produced by the parallel fetch script)
 
 When the user stops monitoring from the page:
 - stop immediately

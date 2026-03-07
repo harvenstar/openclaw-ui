@@ -138,6 +138,8 @@ function toInboxItem(item, detail) {
     category: normalizeCategory(labels),
     unread: labels.includes('UNREAD'),
     timestamp: Number(detail.message?.internalDate || Date.now()),
+    gmailThreadId: detail.message?.threadId || item.id,
+    gmailMessageId: detail.message?.id || item.id,
   }
 }
 
