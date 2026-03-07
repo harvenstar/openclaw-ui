@@ -39,7 +39,13 @@ The main agent submits the email session and immediately hands off to a sub-agen
 ### Step 1: Submit the email session
 
 ```bash
-RESPONSE=$(curl -s -X POST "${AGENTCLICK_URL:-http://localhost:${AGENTCLICK_PORT:-38173}}/api/review" \
+if curl -s --max-time 1 http://localhost:38173/api/health > /dev/null 2>&1; then
+  AGENTCLICK_BASE="http://localhost:38173"
+else
+  AGENTCLICK_BASE="http://host.docker.internal:38173"
+fi
+
+RESPONSE=$(curl -s -X POST "$AGENTCLICK_BASE/api/review" \
   -H "Content-Type: application/json" \
   -d '{
     "type": "email_review",
@@ -125,7 +131,7 @@ Repeat until done (max 10 rewrite rounds):
 
 ```bash
 RESULT=$(curl -s --max-time 310 \
-  "${AGENTCLICK_URL:-http://localhost:${AGENTCLICK_PORT:-38173}}/api/sessions/${SESSION_ID}/wait")
+  "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}/wait")
 STATUS=$(echo "$RESULT" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
 echo "STATUS=$STATUS"
 echo "$RESULT"
@@ -202,7 +208,7 @@ cat > /tmp/clickui_payload.json <<'JSON'
 JSON
 
 HTTP_CODE=$(curl -s -o /tmp/clickui_put_response.txt -w "%{http_code}" \
-  -X PUT "${AGENTCLICK_URL:-http://localhost:${AGENTCLICK_PORT:-38173}}/api/sessions/${SESSION_ID}/payload" \
+  -X PUT "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}/payload" \
   -H "Content-Type: application/json" \
   -d @/tmp/clickui_payload.json)
 echo "PUT_HTTP=$HTTP_CODE"
