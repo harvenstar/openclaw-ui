@@ -663,78 +663,77 @@ export default function ReviewPage() {
             <p className="text-[11px] text-zinc-400 dark:text-slate-500">
               Showing {visibleEmails.length} of {filteredEmails.length} filtered unread emails
             </p>
-            <button
-              type="button"
-              onClick={requestMoreEmails}
-              disabled={submitting || waitingForRewrite}
-              className={`w-full text-xs font-medium px-3 py-2 rounded-lg border transition-colors ${
-                submitting || waitingForRewrite
-                  ? 'opacity-50 cursor-not-allowed border-gray-200 dark:border-zinc-700 text-zinc-400 dark:text-slate-500'
-                  : 'border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950'
-              }`}
-            >
-              Read More
-            </button>
           </div>
           {visibleEmails.length === 0 ? (
             <p className="text-sm text-zinc-400 dark:text-slate-500 p-4">No unread emails.</p>
           ) : (
-            visibleEmails.map(email => {
-              const isSelected = selectedEmailId === email.id
-              return (
-                <div
-                  key={email.id}
-                  className={`p-4 cursor-pointer border-b border-gray-50 dark:border-zinc-800 transition-colors ${
-                    isSelected
-                      ? 'border-l-2'
-                      : 'hover:bg-gray-50 dark:hover:bg-zinc-800'
+            <>
+              {visibleEmails.map(email => {
+                const isSelected = selectedEmailId === email.id
+                return (
+                  <div
+                    key={email.id}
+                    className={`p-4 cursor-pointer border-b border-gray-50 dark:border-zinc-800 transition-colors ${
+                      isSelected
+                        ? 'border-l-2'
+                        : 'hover:bg-gray-50 dark:hover:bg-zinc-800'
+                    }`}
+                    style={isSelected ? { backgroundColor: 'var(--c-file-highlight)', borderLeftColor: 'var(--c-blue)' } : {}}
+                    onClick={() => handleViewEmail(email)}
+                  >
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${categoryBadge(email.category)}`}>
+                        {normalizeCategory(email.category)}
+                      </span>
+                      <span className="text-sm font-medium text-zinc-800 dark:text-slate-200 truncate flex-1 min-w-0">{email.from}</span>
+                    </div>
+                    <p className="text-xs text-zinc-500 dark:text-slate-400 truncate mb-0.5">{email.subject}</p>
+                    <p className="text-xs text-zinc-400 dark:text-slate-500 line-clamp-2 mb-2">{email.preview}</p>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <button
+                        onClick={e => { e.stopPropagation(); handleReply(email) }}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                        style={{ backgroundColor: 'var(--c-navy)', color: 'var(--c-bg)', boxShadow: '0 1px 3px rgba(29,53,87,0.25)' }}
+                        aria-label="Reply to email"
+                      >
+                        Reply
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); handleMarkAsRead(email.id) }}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full transition-all hover:shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                        style={{ backgroundColor: 'var(--c-accent)', color: 'var(--c-text)' }}
+                        aria-label="Mark as read"
+                      >
+                        Read
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); handleSummary(email) }}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                        style={{ border: '1.5px solid var(--c-blue)', color: 'var(--c-blue)', backgroundColor: 'transparent' }}
+                        aria-label="View summary"
+                      >
+                        Summary
+                      </button>
+                    </div>
+                    <div className="text-xs font-medium" style={{ color: 'var(--c-accent)' }}>{formatTimestamp(email.timestamp)}</div>
+                  </div>
+                )
+              })}
+              <div className="p-4 border-t border-gray-50 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={requestMoreEmails}
+                  disabled={submitting || waitingForRewrite}
+                  className={`w-full text-xs font-medium px-3 py-2 rounded-lg border transition-colors ${
+                    submitting || waitingForRewrite
+                      ? 'opacity-50 cursor-not-allowed border-gray-200 dark:border-zinc-700 text-zinc-400 dark:text-slate-500'
+                      : 'border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950'
                   }`}
-                  style={isSelected ? { backgroundColor: 'var(--c-file-highlight)', borderLeftColor: 'var(--c-blue)' } : {}}
-                  onClick={() => handleViewEmail(email)}
                 >
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${categoryBadge(email.category)}`}>
-                      {normalizeCategory(email.category)}
-                    </span>
-                    <span className="text-sm font-medium text-zinc-800 dark:text-slate-200 truncate flex-1 min-w-0">{email.from}</span>
-                  </div>
-                  <p className="text-xs text-zinc-500 dark:text-slate-400 truncate mb-0.5">{email.subject}</p>
-                  <p className="text-xs text-zinc-400 dark:text-slate-500 line-clamp-2 mb-2">{email.preview}</p>
-                  {/* Line 1: action buttons */}
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    {/* Reply — primary: dark navy fill */}
-                    <button
-                      onClick={e => { e.stopPropagation(); handleReply(email) }}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
-                      style={{ backgroundColor: 'var(--c-navy)', color: 'var(--c-bg)', boxShadow: '0 1px 3px rgba(29,53,87,0.25)' }}
-                      aria-label="Reply to email"
-                    >
-                      Reply
-                    </button>
-                    {/* Read — secondary: soft teal fill */}
-                    <button
-                      onClick={e => { e.stopPropagation(); handleMarkAsRead(email.id) }}
-                      className="text-xs font-medium px-3 py-1.5 rounded-full transition-all hover:shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
-                      style={{ backgroundColor: 'var(--c-accent)', color: 'var(--c-text)' }}
-                      aria-label="Mark as read"
-                    >
-                      Read
-                    </button>
-                    {/* Summary — ghost: outlined */}
-                    <button
-                      onClick={e => { e.stopPropagation(); handleSummary(email) }}
-                      className="text-xs font-medium px-3 py-1.5 rounded-full transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1"
-                      style={{ border: '1.5px solid var(--c-blue)', color: 'var(--c-blue)', backgroundColor: 'transparent' }}
-                      aria-label="View summary"
-                    >
-                      Summary
-                    </button>
-                  </div>
-                  {/* Line 2: timestamp */}
-                  <div className="text-xs font-medium" style={{ color: 'var(--c-accent)' }}>{formatTimestamp(email.timestamp)}</div>
-                </div>
-              )
-            })
+                  Read More
+                </button>
+              </div>
+            </>
           )}
         </div>
 
