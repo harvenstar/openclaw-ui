@@ -52,28 +52,40 @@ curl -s --max-time 1 "$AGENTCLICK_BASE/api/health"
 
 If health still fails, stop and fix the server problem before creating a session.
 
-## Step 2: Fetch Gmail data with `gog`
+## Step 2: Fetch Gmail data with the parallel fetch script
 
-Use `gog` to read Gmail. Prefer recent messages with full content.
+Use the bundled parallel fetch script as the default inbox-loading path. It uses `gog` underneath and is faster than serial message fetches.
 
-Example search for 10 recent inbox emails:
+Script:
+- `skills/clickui-email/scripts/fetch_gmail_inbox_parallel.mjs`
+
+Example for 10 recent inbox emails:
 
 ```bash
-gog gmail search --limit 10 'in:inbox'
+node skills/clickui-email/scripts/fetch_gmail_inbox_parallel.mjs \
+  --query 'in:inbox' \
+  --max 10 \
+  --out /tmp/clickui_inbox.json
 ```
 
-Example fetch for one message:
+Example scoped to unread updates with explicit account and concurrency:
 
 ```bash
-gog gmail get <message_id>
+node skills/clickui-email/scripts/fetch_gmail_inbox_parallel.mjs \
+  --query 'category:updates is:unread' \
+  --max 10 \
+  --account you@gmail.com \
+  --concurrency 5 \
+  --out /tmp/clickui_inbox.json
 ```
 
 Guidelines:
 - Prefer 10 recent emails unless the user asked for a different count.
-- Fetch full body and enough header data for the page to display a real email view.
+- Use this script first when loading multiple emails because it fetches in parallel.
+- The script should produce inbox JSON for the review payload. Load that file instead of rebuilding the inbox array inline when possible.
 - Normalize categories to Gmail-style values when possible: `Primary`, `Social`, `Promotions`, `Updates`, `Forums`.
-- Build a compact `preview` for the sidebar, but keep full email text in `body`.
-- If `gog` returns thread-level data, normalize it into the inbox items the UI expects.
+- Keep full email text in `body` and only use `preview` for the sidebar.
+- If you need one-off message detail beyond the script output, use `gog gmail get <message_id>`.
 
 Suggested inbox item shape:
 
@@ -266,4 +278,4 @@ Assume the page behaves like this and update payloads accordingly:
 - Keep the monitor logic in the current agent turn when feasible.
 - If the environment cannot keep a long blocking wait, poll the session every 10 seconds instead.
 - Do not claim a reply came from Gmail or from a background process if the agent generated it.
-- Do not invent helper scripts that are not present in the repo.
+- Prefer the bundled parallel fetch script for inbox loading, and use direct `gog` calls for one-off follow-up detail when needed.
