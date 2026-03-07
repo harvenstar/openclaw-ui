@@ -13,6 +13,8 @@ interface DraftPayload {
   paragraphs: Paragraph[]
   ccSuggestions?: CcSuggestion[]
   intentSuggestions?: IntentSuggestion[]
+  cc?: string[]
+  bcc?: string[]
 }
 
 interface EmailPayload {
@@ -80,6 +82,8 @@ const REASONS = [
   { key: 'inaccurate',  label: 'Inaccurate' },
 ]
 
+const GMAIL_CATEGORIES = ['Primary', 'Social', 'Promotions', 'Updates', 'Forums'] as const
+
 function reasonLabel(key: string): string {
   return REASONS.find(r => r.key === key)?.label ?? key
 }
@@ -128,6 +132,12 @@ function textToParagraphs(text: string): Paragraph[] {
     .map((content, index) => ({ id: `edited_${index + 1}`, content }))
 }
 
+function addUniqueAddress(list: string[], value: string): string[] {
+  const trimmed = value.trim()
+  if (!trimmed) return list
+  return Array.from(new Set([...list, trimmed]))
+}
+
 function fallbackIntentSuggestions(email: EmailItem | null): IntentSuggestion[] {
   if (!email) return []
   return [
@@ -159,10 +169,14 @@ export default function ReviewPage() {
   const [markedAsRead, setMarkedAsRead] = useState<string[]>([])
   const [userIntention, setUserIntention] = useState('')
   const [selectedIntents, setSelectedIntents] = useState<Record<string, boolean>>({})
-  const [emailFilter, setEmailFilter] = useState('')
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [draftTo, setDraftTo] = useState('')
   const [draftSubject, setDraftSubject] = useState('')
   const [draftBody, setDraftBody] = useState('')
+  const [draftCc, setDraftCc] = useState<string[]>([])
+  const [draftBcc, setDraftBcc] = useState<string[]>([])
+  const [newRecipientType, setNewRecipientType] = useState<'cc' | 'bcc'>('cc')
+  const [newRecipientValue, setNewRecipientValue] = useState('')
   const [summaryEmail, setSummaryEmail] = useState<EmailItem | null>(null)
   const [summaryData, setSummaryData] = useState<SummaryResponse | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
@@ -177,6 +191,11 @@ export default function ReviewPage() {
     setDraftTo('')
     setDraftSubject('')
     setDraftBody('')
+    setDraftCc([])
+    setDraftBcc([])
+    setSelectedCategories([])
+    setNewRecipientType('cc')
+    setNewRecipientValue('')
     setSubmitting(false)
   }, [])
 
@@ -301,6 +320,8 @@ export default function ReviewPage() {
           editedDraft: {
             emailId: selectedEmailId ?? undefined,
             to: draftTo,
+            cc: draftCc,
+            bcc: draftBcc,
             subject: draftSubject,
             body: draftBody,
             paragraphs: textToParagraphs(draftBody),
@@ -344,7 +365,9 @@ export default function ReviewPage() {
     setDraftTo(activeDraftForState.to)
     setDraftSubject(activeDraftForState.subject)
     setDraftBody(paragraphsToText(activeDraftForState.paragraphs))
-  }, [activeDraftForState?.to, activeDraftForState?.subject, activeDraftForState?.paragraphs])
+    setDraftCc(activeDraftForState.cc ?? selectedInboxEmail?.cc ?? [])
+    setDraftBcc(activeDraftForState.bcc ?? selectedInboxEmail?.bcc ?? [])
+  }, [activeDraftForState?.to, activeDraftForState?.subject, activeDraftForState?.paragraphs, activeDraftForState?.cc, activeDraftForState?.bcc, selectedInboxEmail?.cc, selectedInboxEmail?.bcc])
 
   if (error) return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
@@ -380,16 +403,10 @@ export default function ReviewPage() {
   if (hasInbox) {
     const inboxPayload = payload as InboxPayload
     const unreadEmails = inboxPayload.inbox.filter(e => e.unread !== false && !markedAsRead.includes(e.id))
-    const filterNeedle = emailFilter.trim().toLowerCase()
     const filteredEmails = unreadEmails.filter(email =>
-      !filterNeedle
-      || email.from.toLowerCase().includes(filterNeedle)
-      || email.subject.toLowerCase().includes(filterNeedle)
-      || email.preview.toLowerCase().includes(filterNeedle)
-      || normalizeCategory(email.category).toLowerCase().includes(filterNeedle)
+      selectedCategories.length === 0 || selectedCategories.includes(normalizeCategory(email.category))
     )
     const visibleEmails = filteredEmails.slice(0, 20)
-    const hasActions = actions.length > 0
     const selectedEmail = selectedInboxEmail
     const activeDraft = selectedEmail?.replyDraft ?? inboxPayload.draft
     const intentSuggestions = (activeDraft.intentSuggestions && activeDraft.intentSuggestions.length > 0)
@@ -493,13 +510,27 @@ export default function ReviewPage() {
                 {unreadEmails.length} unread email{unreadEmails.length === 1 ? '' : 's'}
               </p>
             </div>
-            <input
-              type="text"
-              value={emailFilter}
-              onChange={e => setEmailFilter(e.target.value)}
-              placeholder="Filter emails"
-              className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded px-3 py-2 bg-white dark:bg-zinc-950 text-zinc-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
-            />
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-zinc-400 dark:text-slate-500 mb-2">Filter Categories</p>
+              <div className="flex flex-wrap gap-2">
+                {GMAIL_CATEGORIES.map(category => {
+                  const selected = selectedCategories.includes(category)
+                  return (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategories(current => selected ? current.filter(value => value !== category) : [...current, category])}
+                      className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                        selected
+                          ? `${categoryBadge(category)} border-transparent`
+                          : 'border-gray-200 dark:border-zinc-700 text-zinc-500 dark:text-slate-400 bg-white dark:bg-zinc-950'
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
             <p className="text-[11px] text-zinc-400 dark:text-slate-500">
               Showing {visibleEmails.length} of {filteredEmails.length} filtered unread emails
             </p>
@@ -721,13 +752,16 @@ export default function ReviewPage() {
                 <div className="mb-6 p-4 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg space-y-3">
                   <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase tracking-wider">Reply Draft</p>
                   <div>
+                    <label className="block text-xs text-zinc-500 dark:text-slate-400 mb-1">Reply To</label>
+                    <div className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded px-3 py-2 bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-slate-400">
+                      {activeDraft.replyTo}
+                    </div>
+                  </div>
+                  <div>
                     <label className="block text-xs text-zinc-500 dark:text-slate-400 mb-1">To</label>
-                    <input
-                      type="text"
-                      value={draftTo}
-                      onChange={e => setDraftTo(e.target.value)}
-                      className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded px-3 py-2 bg-white dark:bg-zinc-950 text-zinc-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
-                    />
+                    <div className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded px-3 py-2 bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-slate-400">
+                      {draftTo}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs text-zinc-500 dark:text-slate-400 mb-1">Subject</label>
@@ -738,6 +772,72 @@ export default function ReviewPage() {
                       className="w-full text-sm border border-gray-200 dark:border-zinc-700 rounded px-3 py-2 bg-white dark:bg-zinc-950 text-zinc-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs text-zinc-500 dark:text-slate-400 mb-1">Add Recipient</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setNewRecipientType(type => type === 'cc' ? 'bcc' : 'cc')}
+                        className="px-3 py-2 text-sm rounded border border-gray-200 dark:border-zinc-700 text-zinc-600 dark:text-slate-300"
+                        title="Toggle recipient type"
+                      >
+                        {newRecipientType.toUpperCase()} +
+                      </button>
+                      <input
+                        type="text"
+                        value={newRecipientValue}
+                        onChange={e => setNewRecipientValue(e.target.value)}
+                        placeholder={newRecipientType === 'cc' ? 'Add Cc address' : 'Add Bcc address'}
+                        className="flex-1 text-sm border border-gray-200 dark:border-zinc-700 rounded px-3 py-2 bg-white dark:bg-zinc-950 text-zinc-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newRecipientType === 'cc') setDraftCc(current => addUniqueAddress(current, newRecipientValue))
+                          else setDraftBcc(current => addUniqueAddress(current, newRecipientValue))
+                          setNewRecipientValue('')
+                        }}
+                        className="px-3 py-2 text-sm rounded border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-300"
+                        title="Add recipient"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  {draftCc.length > 0 && (
+                    <div>
+                      <label className="block text-xs text-zinc-500 dark:text-slate-400 mb-1">Cc</label>
+                      <div className="flex flex-wrap gap-2">
+                        {draftCc.map(email => (
+                          <button
+                            key={`cc-${email}`}
+                            type="button"
+                            onClick={() => setDraftCc(current => current.filter(value => value !== email))}
+                            className="text-xs px-2 py-1 rounded-full border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300"
+                          >
+                            {email} ×
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {draftBcc.length > 0 && (
+                    <div>
+                      <label className="block text-xs text-zinc-500 dark:text-slate-400 mb-1">Bcc</label>
+                      <div className="flex flex-wrap gap-2">
+                        {draftBcc.map(email => (
+                          <button
+                            key={`bcc-${email}`}
+                            type="button"
+                            onClick={() => setDraftBcc(current => current.filter(value => value !== email))}
+                            className="text-xs px-2 py-1 rounded-full border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300"
+                          >
+                            {email} ×
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs text-zinc-500 dark:text-slate-400 mb-1">Reply Body</label>
                     <textarea
@@ -754,18 +854,6 @@ export default function ReviewPage() {
                   <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 rounded-lg flex items-center gap-3">
                     <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
                     <p className="text-sm text-blue-600 dark:text-blue-400">Agent is rewriting the draft...</p>
-                  </div>
-                )}
-
-                {/* Paragraphs */}
-                <div className="space-y-5 mb-8">
-                  {renderParagraphs(inboxPayload.draft.paragraphs)}
-                </div>
-
-                {/* Actions summary */}
-                {hasActions && (
-                  <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-100 dark:border-amber-900 rounded-lg text-sm text-amber-700 dark:text-amber-400">
-                    {actions.length} change{actions.length > 1 ? 's' : ''} marked
                   </div>
                 )}
 

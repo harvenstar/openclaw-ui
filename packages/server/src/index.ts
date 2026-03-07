@@ -729,7 +729,11 @@ function buildActionSummary(result: Record<string, unknown>): string {
   if (editedDraft) {
     const draftTo = typeof editedDraft.to === 'string' ? editedDraft.to : ''
     const draftSubject = typeof editedDraft.subject === 'string' ? editedDraft.subject : ''
+    const cc = Array.isArray(editedDraft.cc) ? editedDraft.cc.filter((item): item is string => typeof item === 'string') : []
+    const bcc = Array.isArray(editedDraft.bcc) ? editedDraft.bcc.filter((item): item is string => typeof item === 'string') : []
     lines.push(`- Edited draft ready${draftTo ? ` to ${draftTo}` : ''}${draftSubject ? ` with subject "${draftSubject}"` : ''}.`)
+    if (cc.length > 0) lines.push(`- Added Cc: ${cc.join(', ')}`)
+    if (bcc.length > 0) lines.push(`- Added Bcc: ${bcc.join(', ')}`)
   }
 
   return lines.join('\n')
