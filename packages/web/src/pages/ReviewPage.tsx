@@ -806,9 +806,6 @@ export default function ReviewPage() {
                 </div>
               )}
             </div>
-            <p className="text-[11px] text-zinc-400 dark:text-slate-500">
-              Showing {visibleEmails.length} of {filteredEmails.length} filtered unread emails
-            </p>
           </div>
           {visibleEmails.length === 0 ? (
             <p className="text-sm text-zinc-400 dark:text-slate-500 p-4">No unread emails.</p>
