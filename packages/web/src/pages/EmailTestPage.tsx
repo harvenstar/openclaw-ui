@@ -6,24 +6,68 @@ const samplePayload = {
     {
       id: 'mail_1',
       from: 'Acme Cloud',
+      to: 'hm@example.com',
       subject: 'Your March usage report is ready',
       preview: 'Your monthly usage summary is available. Review compute, storage, and overage details before billing closes on Friday.',
+      body: `Hi Hanwen,
+
+Your monthly usage summary is now ready for review.
+
+- Compute spend increased by 12%
+- Storage spend remained stable
+- Two projects crossed their forecast threshold
+
+Please review the attached billing dashboard before Friday at 5 PM PT.
+
+Thanks,
+Acme Cloud Billing`,
+      headers: [
+        { label: 'Message-ID', value: '<billing-032026@acmecloud.test>' },
+        { label: 'Thread', value: 'March Billing Summary' },
+      ],
       category: 'Updates',
       timestamp: Date.now() - 1000 * 60 * 45,
     },
     {
       id: 'mail_2',
       from: 'Design Weekly',
+      to: 'hm@example.com',
       subject: 'Ten landing pages worth stealing from',
       preview: 'A curated set of experiments in motion, copy structure, and pricing-page hierarchy from recent SaaS launches.',
+      body: `This week:
+
+1. Stripe-style enterprise pricing comparison blocks
+2. Editorial product storytelling from three AI-native apps
+3. Lightweight motion systems that clarify hierarchy instead of decorating it
+
+Open the issue for screenshots and teardown notes.`,
       category: 'Promotions',
       timestamp: Date.now() - 1000 * 60 * 180,
     },
     {
       id: 'mail_3',
       from: 'Mina Chen',
+      to: 'hm@example.com',
+      cc: ['ops@example.com'],
       subject: 'Can you review the rollout note?',
       preview: 'Need a tighter reply that agrees to the rollout timing, keeps it warm, and asks for the final changelog before send.',
+      body: `Hey,
+
+Can you review the rollout note before I send it to the external list?
+
+I want the response to:
+- agree to the rollout timing,
+- stay warm and brief,
+- ask for the final changelog before anything goes out.
+
+If you have edits, send them back today and I can ship the final version tonight.
+
+Thanks,
+Mina`,
+      headers: [
+        { label: 'Message-ID', value: '<mina-rollout-note@example.test>' },
+        { label: 'Priority', value: 'High' },
+      ],
       category: 'Primary',
       timestamp: Date.now() - 1000 * 60 * 15,
     },

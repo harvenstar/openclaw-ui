@@ -15,8 +15,13 @@ interface EmailPayload {
 interface EmailItem {
   id: string
   from: string
+  to?: string
+  cc?: string[]
+  bcc?: string[]
   subject: string
   preview: string
+  body?: string
+  headers?: Array<{ label: string; value: string }>
   category: 'Primary' | 'Social' | 'Promotions' | 'Updates' | 'Forums' | string
   timestamp: number
 }
@@ -101,6 +106,10 @@ function formatTimestamp(ts: number): string {
   const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' })
   const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   return `${dateStr}, ${timeStr}`
+}
+
+function joinAddresses(values?: string[]): string {
+  return values && values.length > 0 ? values.join(', ') : '—'
 }
 
 export default function ReviewPage() {
@@ -551,7 +560,16 @@ export default function ReviewPage() {
                       <span className="text-xs text-zinc-400 dark:text-slate-500">{formatTimestamp(email.timestamp)}</span>
                     </div>
                     <h2 className="text-base font-medium text-zinc-800 dark:text-slate-200 mb-1">{email.subject}</h2>
-                    <p className="text-xs text-zinc-500 dark:text-slate-400 mb-4">From: {email.from}</p>
+                    <div className="mb-4 space-y-1">
+                      <p className="text-xs text-zinc-500 dark:text-slate-400">From: {email.from}</p>
+                      <p className="text-xs text-zinc-500 dark:text-slate-400">To: {email.to ?? inboxPayload.draft.replyTo ?? '—'}</p>
+                      {email.cc && email.cc.length > 0 && (
+                        <p className="text-xs text-zinc-500 dark:text-slate-400">Cc: {joinAddresses(email.cc)}</p>
+                      )}
+                      {email.bcc && email.bcc.length > 0 && (
+                        <p className="text-xs text-zinc-500 dark:text-slate-400">Bcc: {joinAddresses(email.bcc)}</p>
+                      )}
+                    </div>
                     {/* Action row */}
                     <div className="flex items-center gap-2 mb-6">
                       {/* Reply — primary */}
@@ -583,7 +601,19 @@ export default function ReviewPage() {
                       </button>
                     </div>
                     <div className="p-4 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg">
-                      <p className="text-sm text-zinc-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{email.preview || 'No content available.'}</p>
+                      <p className="text-xs uppercase tracking-wider text-zinc-400 dark:text-slate-500 mb-2">Full Email</p>
+                      <p className="text-sm text-zinc-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                        {email.body || email.preview || 'No content available.'}
+                      </p>
+                      {email.headers && email.headers.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-zinc-800 space-y-1">
+                          {email.headers.map(header => (
+                            <p key={`${header.label}:${header.value}`} className="text-xs text-zinc-500 dark:text-slate-400">
+                              <span className="font-medium text-zinc-600 dark:text-slate-300">{header.label}:</span> {header.value}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
