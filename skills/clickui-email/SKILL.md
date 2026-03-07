@@ -1,13 +1,13 @@
 ---
 name: clickui-email
-description: Use this skill when you have finished writing an email draft and need the user to review it before sending.
+description: Use this skill when the user needs to review, triage, read, or reply to email in AgentClick UI before anything is sent.
 ---
 
 # ClickUI Email Review
 
 ## Trigger Conditions (high priority)
 
-Use this skill by default when the user asks you to draft an email and review it before sending.
+Use this skill by default when the user asks to review an inbox, read email in UI, triage email, or draft a reply in browser before sending.
 
 Common trigger phrases include (Chinese or English):
 - "写好后让我审阅"
@@ -18,7 +18,7 @@ Common trigger phrases include (Chinese or English):
 - "before sending, let me review"
 - "draft it and I will approve"
 
-If the request is an email draft + human review, prefer this skill over generic chat drafting.
+If the request is email work plus human review in UI, prefer this skill over generic chat drafting.
 
 ## Do Not Use These Alternatives
 
@@ -27,16 +27,16 @@ For email review requests handled by this skill:
 - Do NOT use the `canvas` tool to manually render a draft
 - Do NOT ask the user to review the draft directly in chat first
 
-Always submit to AgentClick via `POST /api/review` and let the user review in the AgentClick UI.
-Submission opens the email review page for the active session.
+Always submit to AgentClick via `POST /api/review` and let the user work inside the AgentClick UI.
+Submission opens the email review page for the active session. Treat that page as the user's email client for this task.
 
 ---
 
 ## Main Agent: Two Steps Only
 
-The main agent submits the draft and immediately hands off to a sub-agent. It does NOT poll.
+The main agent submits the email session and immediately hands off to a sub-agent. It does NOT poll.
 
-### Step 1: Submit draft for review
+### Step 1: Submit the email session
 
 ```bash
 RESPONSE=$(curl -s -X POST "${AGENTCLICK_URL:-http://localhost:${AGENTCLICK_PORT:-38173}}/api/review" \
@@ -49,26 +49,24 @@ RESPONSE=$(curl -s -X POST "${AGENTCLICK_URL:-http://localhost:${AGENTCLICK_PORT
         {
           "id": "e1",
           "from": "SENDER_EMAIL",
+          "to": "RECIPIENT_EMAIL",
           "subject": "ORIGINAL_SUBJECT",
-          "preview": "ORIGINAL_EMAIL_PREVIEW_TEXT",
-          "category": "Work",
-          "isRead": false,
+          "preview": "SHORT_SIDEBAR_SNIPPET_ONLY",
+          "body": "FULL_ORIGINAL_EMAIL_BODY",
+          "headers": [
+            {"label": "Message-ID", "value": "<message-id@example.com>"},
+            {"label": "Thread", "value": "THREAD_SUBJECT"}
+          ],
+          "category": "Updates",
+          "unread": true,
           "timestamp": UNIX_MS_TIMESTAMP
         }
       ],
       "draft": {
-        "replyTo": "e1",
+        "replyTo": "SENDER_EMAIL",
         "to": "RECIPIENT_EMAIL",
         "subject": "Re: ORIGINAL_SUBJECT",
-        "paragraphs": [
-          {"id": "p1", "content": "PARAGRAPH_1"},
-          {"id": "p2", "content": "PARAGRAPH_2"},
-          {"id": "p3", "content": "PARAGRAPH_3"}
-        ],
-        "intentSuggestions": [
-          {"id": "i1", "text": "Agree to the proposal"},
-          {"id": "i2", "text": "Schedule a follow-up meeting"}
-        ]
+        "paragraphs": []
       }
     }
   }')
@@ -76,14 +74,19 @@ SESSION_ID=$(echo "$RESPONSE" | grep -o '"sessionId":"[^"]*"' | cut -d'"' -f4)
 echo "Session: $SESSION_ID"
 ```
 
-Replace placeholders with actual content. Split body into 2–4 logical paragraphs.
+Rules for the initial payload:
+- Include the full original email in `body`. Do not rely on `preview` for review.
+- `preview` is only a short list snippet for the sidebar.
+- Do not generate a reply draft up front unless the user explicitly asked for one before opening the UI.
+- Default to `draft.paragraphs: []` until the user clicks `Reply`.
+- Normalize categories to Gmail-style values when possible: `Primary`, `Social`, `Promotions`, `Updates`, `Forums`.
 
 ### Step 2: Spawn a monitor sub-agent
 
 Use the Task tool to spawn a sub-agent. Pass it:
 - The `SESSION_ID`
 - The full inbox array (exactly as submitted)
-- The original paragraphs array (exactly as submitted)
+- The current draft object (which may start empty)
 
 Tell the sub-agent to follow the **Sub-Agent Instructions** section below.
 
@@ -100,10 +103,14 @@ You are a dedicated monitor for an AgentClick email review session. You own the 
 
 You have been given:
 - `SESSION_ID` — the active session
-- `inbox` — the inbox array (never changes)
-- `paragraphs` — the current draft paragraphs (update this in memory after each rewrite)
+- `inbox` — the inbox array
+- `draft` — the current reply draft object, which may be empty until the user clicks `Reply`
 
 Maintain a `ROUND` counter starting at 0 and a `LOG` list of actions taken each round.
+Maintain per-email UI state in memory:
+- `reply_loading[emailId]` — true while you are generating a reply draft
+- `reply_ready[emailId]` — true when the draft has arrived
+- `reply_unread[emailId]` — true when a newly generated reply draft is ready but the user has not opened it yet
 
 ### Your loop
 
@@ -131,13 +138,23 @@ echo "$RESULT"
 
 #### C. Rewrite and PUT (only when STATUS is `rewriting`)
 
-Read `result.actions` and `result.userIntention` from the `/wait` response.
+Read the full `result` object from the `/wait` response.
+
+The UI is an email client, not only a final approval page:
+- The user may open multiple emails while you work.
+- The user may click `Reply` on one email while continuing to read others.
+- Do not block the user from browsing other emails while a reply is being prepared.
+- When a reply is requested, update the session payload promptly so the UI can show loading state for that email.
+- When the reply draft is ready, update the same email row so the UI can show a ready ring and an unread red dot for that email.
 
 Rewrite rules:
-- Apply the **minimum** change needed to satisfy the feedback
-- Only modify paragraphs referenced in `result.actions`
-- Keep all other paragraph text exactly unchanged
-- Keep `inbox`, `draft.subject`, `draft.to`, and `draft.replyTo` unchanged
+- If `result.readMore` is true, fetch more emails for the requested categories and PUT an updated inbox payload. Keep existing email IDs and append or merge new ones.
+- If the user marked emails as read, reflect that in your local state and sync that status back to the real email system if you control it.
+- If the user requested `Reply` for an email and no draft exists yet, generate the draft then PUT it into the payload for that email.
+- If `result.actions` contains paragraph edits, apply the minimum change needed to satisfy the feedback.
+- Only modify paragraphs referenced in `result.actions` unless the user explicitly requested a full rewrite.
+- Keep all other paragraph text exactly unchanged.
+- Keep `inbox`, `draft.subject`, `draft.to`, and `draft.replyTo` unchanged unless the user explicitly edited them in UI-supported fields.
 
 Write the payload to a temp file (required for stability with special characters), then PUT:
 
@@ -145,14 +162,14 @@ Write the payload to a temp file (required for stability with special characters
 cat > /tmp/clickui_payload.json <<'JSON'
 {
   "payload": {
-    "inbox": [SAME_INBOX_AS_SUBMITTED],
-    "draft": {
-      "replyTo": "e1",
-      "to": "RECIPIENT_EMAIL",
-      "subject": "Re: ORIGINAL_SUBJECT",
-      "paragraphs": [
-        {"id": "p1", "content": "UPDATED_OR_UNCHANGED_PARAGRAPH_1"},
-        {"id": "p2", "content": "UPDATED_OR_UNCHANGED_PARAGRAPH_2"},
+      "inbox": [SAME_INBOX_AS_SUBMITTED],
+      "draft": {
+        "replyTo": "SENDER_EMAIL",
+        "to": "RECIPIENT_EMAIL",
+        "subject": "Re: ORIGINAL_SUBJECT",
+        "paragraphs": [
+          {"id": "p1", "content": "UPDATED_OR_UNCHANGED_PARAGRAPH_1"},
+          {"id": "p2", "content": "UPDATED_OR_UNCHANGED_PARAGRAPH_2"},
         {"id": "p3", "content": "UPDATED_OR_UNCHANGED_PARAGRAPH_3"}
       ]
     }
@@ -170,7 +187,10 @@ cat /tmp/clickui_put_response.txt
 
 If HTTP is not `200`, fix the JSON and retry the PUT. Do not loop back to A with a failed PUT.
 
-If HTTP is not `200`, fix the JSON and retry the PUT. Do not loop back to A with a failed PUT.
+When preparing a first reply draft after the user clicks `Reply`, use the same PUT path:
+- First PUT a lightweight state update as soon as possible so the UI can show loading for that email.
+- Then generate the draft.
+- Then PUT the completed draft so the UI shows it as ready.
 
 #### D. Report to main agent after each rewrite round
 
@@ -178,7 +198,7 @@ After a successful PUT, the server automatically notifies the main agent via web
 
 However, you must update your local state before looping:
 - Increment `ROUND`
-- Update your in-memory `paragraphs` to the new content
+- Update your in-memory `draft` to the new content
 - Append to `LOG`: `"Round N: rewrote [paragraph IDs] — [user instruction]"`
 
 Then **go back to step A**. The user will see the updated draft in the same browser tab.
@@ -193,6 +213,8 @@ Extract from the final `/wait` response:
 - `result.actions` — deletions and rewrites the user marked
 - `result.confirmed` — should be `true`
 - The final paragraph list from the session payload
+- Any emails marked read by the user
+- Any reply draft fields edited by the user in UI
 
 Output a structured report for the main agent:
 
@@ -210,8 +232,21 @@ FINAL_DRAFT:
     - p1: <final content>
     - p2: <final content>
     - p3: <final content>
-INSTRUCTION_TO_MAIN_AGENT: Send the email using the FINAL_DRAFT above. Do not ask the user again.
+EMAIL_STATE_CHANGES:
+  marked_read:
+    - <email id>
+INSTRUCTION_TO_MAIN_AGENT: Send the email using the FINAL_DRAFT above, and sync any marked-read state. Do not ask the user again.
 ```
+
+## UI Behavior Requirements
+
+Follow these UI assumptions when preparing or updating payloads:
+- The main email view should show the full email body, not only a preview snippet.
+- The sidebar snippet is only for compact scanning.
+- Reply draft generation is lazy: do not send a ready draft before the user clicks `Reply`, unless the user explicitly asked for an immediate draft.
+- While a reply is being generated, the UI should be able to show loading for that email and still let the user browse other emails.
+- When a reply draft becomes ready, the corresponding email row should show a visible ready state and an unread red dot until the user opens that reply.
+- Fast updates matter. Prefer sending an immediate "loading" payload update, then a second payload update with the completed draft.
 
 ---
 
