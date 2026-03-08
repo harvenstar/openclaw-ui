@@ -100,25 +100,15 @@ The root skill is [`SKILL.md`](./SKILL.md). It routes to the right sub-skill.
 
 | Skill | Path | Purpose | How to Use |
 |---|---|---|---|
-| Router | `SKILL.md` | Entry point that routes the agent to the right review workflow. | `Load SKILL.md and use AgentClick for review.` |
-| Action Approval | `skills/clickui-approve/` | Approve or reject risky actions before execution. | `Before deleting those files, show me an approval review.` |
-| Code Review | `skills/clickui-code/` | Review shell commands, diffs, and code-related actions in UI. | `Show me a code review before running that command.` |
-| Email Review | `skills/clickui-email/` | Review inbox items, drafts, replies, and live email sessions. | `Open my inbox in AgentClick and let me triage emails.` |
-| Plan Review | `skills/clickui-plan/` | Inspect and revise proposed plans before the agent runs them. | `Show me the plan in AgentClick before you start.` |
-| Trajectory Review | `skills/clickui-trajectory/` | Review multi-step runs, mistakes, and resume points. | `Show me what you just did so I can review the steps.` |
-| Memory Review | `skills/clickui-memory/` | Review memory files and memory-management changes. | `Open memory management and let me pick which files to include.` |
+| Router | `SKILL.md` | Entry point that routes the agent to the right review workflow. | `Load SKILL.md and use AgentClick UI for review.` |
+| Action Approval | `skills/clickui-approve/` | Approve or reject risky actions before execution. | `Before deleting those files, show me an approval review in AgentClick UI.` |
+| Code Review | `skills/clickui-code/` | Review shell commands, diffs, and code-related actions in UI. | `Show me a code review in AgentClick UI before running that command.` |
+| Email Review | `skills/clickui-email/` | Review inbox items, drafts, replies, and live email sessions. | `Open my inbox in AgentClick UI and let me triage emails.` |
+| Plan Review | `skills/clickui-plan/` | Inspect and revise proposed plans before the agent runs them. | `Show me the plan in AgentClick UI before you start.` |
+| Trajectory Review | `skills/clickui-trajectory/` | Review multi-step runs, mistakes, and resume points. | `Show me what you just did in AgentClick UI so I can review the steps.` |
+| Memory Review | `skills/clickui-memory/` | Review memory files and memory-management changes. | `Open memory management in AgentClick UI and let me pick which files to include.` |
 
 For direct agent usage, telling the agent to load the root skill is usually enough.
-
-### API Quick Reference
-
-| Endpoint | Purpose |
-|---|---|
-| `POST /api/review` | Create any review session (type + payload) |
-| `POST /api/memory/management/create` | Create memory management session |
-| `GET /api/sessions/:id/wait` | Block until user acts (long-poll) |
-| `PUT /api/sessions/:id/payload` | Update session data |
-| `POST /api/sessions/:id/complete` | Mark session done |
 
 ---
 
