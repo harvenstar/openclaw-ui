@@ -154,27 +154,28 @@ Payload rules:
 
 After creating the session, the same agent must stay attached to it.
 
-Preferred loop:
+**Environment detection:** `GOG_ACCOUNT` is set in Docker (via docker-compose.yml) and absent elsewhere.
+
+- In Docker (`GOG_ACCOUNT` set): run ONE curl per exec call, check result in your context, then poll again. Do NOT use a bash while loop. You are the loop controller.
+- In non-Docker: the `/wait` call blocks until state changes, then process the result.
 
 ```bash
-curl -s --max-time 310 "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}/wait"
-```
-
-Fallback if blocking is unavailable:
-
-```bash
-while true; do
+# Detect environment: GOG_ACCOUNT is set in Docker (docker-compose.yml), absent elsewhere
+if [ -n "$GOG_ACCOUNT" ]; then
+  # Docker: use short-poll (one curl per exec, you are the loop controller)
   curl -s "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}"
-  sleep 10
-done
+else
+  # Non-Docker: use blocking /wait
+  curl -s --max-time 310 "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}/wait"
+fi
 ```
 
-When using the fallback, inspect:
-- `status`
-- `result`
-- `pageStatus`
-
-If `pageStatus.stopMonitoring` is `true`, stop immediately.
+After each poll:
+- Inspect `status`, `result`, and `pageStatus`
+- If `pageStatus.stopMonitoring` is `true` → stop
+- If `status` is `"completed"` → stop
+- If `status` is `"rewriting"` → handle the request (see Rewrite / Update Rules below), then poll again
+- Otherwise → wait 1 second (`sleep 1` as a separate exec), then poll again
 
 ## Rewrite / Update Rules
 
