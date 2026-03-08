@@ -117,9 +117,32 @@ async function mapWithConcurrency(items, limit, mapper) {
   return results
 }
 
+// Extract HTML body from Gmail message payload parts (base64url-encoded)
+function extractHtmlBody(payload) {
+  if (!payload) return ''
+  // Single-part HTML message
+  if (payload.mimeType === 'text/html' && payload.body?.data) {
+    return Buffer.from(payload.body.data, 'base64url').toString('utf-8')
+  }
+  // Multipart: look for text/html part
+  const parts = payload.parts || []
+  for (const part of parts) {
+    if (part.mimeType === 'text/html' && part.body?.data) {
+      return Buffer.from(part.body.data, 'base64url').toString('utf-8')
+    }
+    // Recurse into nested multipart
+    if (part.parts) {
+      const nested = extractHtmlBody(part)
+      if (nested) return nested
+    }
+  }
+  return ''
+}
+
 function toInboxItem(item, detail) {
   const payloadHeaders = detail.message?.payload?.headers || []
-  const body = detail.body || detail.message?.snippet || ''
+  const htmlBody = extractHtmlBody(detail.message?.payload)
+  const body = htmlBody || detail.body || detail.message?.snippet || ''
   const preview = (detail.message?.snippet || body || '').replace(/\s+/g, ' ').trim().slice(0, 160)
   const labels = detail.message?.labelIds || item.labels || []
 

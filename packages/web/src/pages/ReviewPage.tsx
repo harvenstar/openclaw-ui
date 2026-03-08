@@ -1127,9 +1127,43 @@ export default function ReviewPage() {
                             />
                           )
                         }
+                        // Convert plain text with parenthesized URLs into React elements with clickable links
+                        // Pattern: "LINK TEXT ( https://... )" → <a href="...">LINK TEXT</a>
+                        // Also handles standalone "( https://... )" and bare URLs on their own line
+                        const parts: React.ReactNode[] = []
+                        const urlPattern = /(\S[^(]*?)\s*\( *(https?:\/\/\S+?) *\)|\( *(https?:\/\/\S+?) *\)|^(https?:\/\/\S+)$/gm
+                        let lastIndex = 0
+                        let match: RegExpExecArray | null
+                        while ((match = urlPattern.exec(bodyContent)) !== null) {
+                          if (match.index > lastIndex) {
+                            parts.push(bodyContent.slice(lastIndex, match.index))
+                          }
+                          if (match[1] && match[2]) {
+                            // "LINK TEXT ( url )" → clickable link
+                            parts.push(
+                              <a key={match.index} href={match[2]} target="_blank" rel="noopener noreferrer"
+                                className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300">
+                                {match[1].trim()}
+                              </a>
+                            )
+                          } else {
+                            // Standalone "( url )" or bare URL → clickable "[link]"
+                            const url = match[3] || match[4]
+                            parts.push(
+                              <a key={match.index} href={url} target="_blank" rel="noopener noreferrer"
+                                className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300">
+                                [link]
+                              </a>
+                            )
+                          }
+                          lastIndex = match.index + match[0].length
+                        }
+                        if (lastIndex < bodyContent.length) {
+                          parts.push(bodyContent.slice(lastIndex))
+                        }
                         return (
                           <p className="text-sm text-zinc-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                            {bodyContent}
+                            {parts}
                           </p>
                         )
                       })()}
