@@ -34,7 +34,11 @@ If the task is email work plus live session handling in UI, use this skill over 
 ## Step 1: Ensure AgentClick is running
 
 ```bash
-AGENTCLICK_BASE="${AGENTCLICK_URL:-http://localhost:${AGENTCLICK_PORT:-${PORT:-38173}}}"
+if curl -s --max-time 1 http://localhost:38173/api/health > /dev/null 2>&1; then
+  AGENTCLICK_BASE="http://localhost:38173"
+else
+  AGENTCLICK_BASE="http://host.docker.internal:38173"
+fi
 
 if ! curl -s --max-time 1 "$AGENTCLICK_BASE/api/health" > /dev/null 2>&1; then
   npm start >/tmp/agentclick.log 2>&1 &
