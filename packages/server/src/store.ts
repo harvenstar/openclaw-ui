@@ -99,6 +99,12 @@ export function updateSessionPayload(id: string, payload: unknown): void {
   `).run(JSON.stringify(payload), Date.now(), id)
 }
 
+export function updateSessionPayloadKeepStatus(id: string, payload: unknown): void {
+  db.prepare(`
+    UPDATE sessions SET payload = ?, updatedAt = ?, revision = revision + 1 WHERE id = ?
+  `).run(JSON.stringify(payload), Date.now(), id)
+}
+
 export function updateSessionPageStatus(id: string, pageStatus: SessionPageStatus): void {
   db.prepare(`
     UPDATE sessions SET pageStatus = ?, updatedAt = ? WHERE id = ?

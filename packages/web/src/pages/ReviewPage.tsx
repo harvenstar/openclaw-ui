@@ -339,6 +339,18 @@ export default function ReviewPage() {
             } as InboxPayload
           })
           if (pendingAgentAction === 'regenerate') resetEditState()
+
+          // For reply actions, keep waiting until the target email's replyState is "ready"
+          if (pendingAgentAction === 'reply' && activeReplyRequestEmailId) {
+            const serverPayload = data.payload as ReviewSessionPayload
+            const serverInbox = Array.isArray(serverPayload?.inbox) ? serverPayload.inbox : []
+            const targetEmail = serverInbox.find((e: EmailItem) => e.id === activeReplyRequestEmailId)
+            if (targetEmail && targetEmail.replyState !== 'ready') {
+              // Still loading — don't stop waiting
+              return
+            }
+          }
+
           setWaitingForRewrite(false)
           setPendingAgentAction(null)
           setActiveReplyRequestEmailId(null)
@@ -1090,9 +1102,37 @@ export default function ReviewPage() {
                     </div>
                     <div className="p-4 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-lg">
                       <p className="text-xs uppercase tracking-wider text-zinc-400 dark:text-slate-500 mb-2">Full Email</p>
-                      <p className="text-sm text-zinc-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                        {email.body || email.preview || 'No content available.'}
-                      </p>
+                      {(() => {
+                        const bodyContent = email.body || email.preview || ''
+                        const hasHtml = /<(html|body|div|table)\b/i.test(bodyContent)
+                        if (!bodyContent) {
+                          return <p className="text-sm text-zinc-700 dark:text-slate-300 leading-relaxed">No content available.</p>
+                        }
+                        if (hasHtml) {
+                          return (
+                            <iframe
+                              sandbox="allow-same-origin"
+                              srcDoc={bodyContent}
+                              referrerPolicy="no-referrer"
+                              style={{ width: '100%', border: 'none', overflow: 'hidden', minHeight: '120px' }}
+                              onLoad={(e) => {
+                                const iframe = e.currentTarget
+                                try {
+                                  const h = iframe.contentDocument?.body?.scrollHeight
+                                  if (h) {
+                                    iframe.style.height = h + 16 + 'px'
+                                  }
+                                } catch { /* cross-origin guard */ }
+                              }}
+                            />
+                          )
+                        }
+                        return (
+                          <p className="text-sm text-zinc-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                            {bodyContent}
+                          </p>
+                        )
+                      })()}
                       {email.headers && email.headers.length > 0 && (
                         <div className="mt-4 pt-3 border-t border-gray-100 dark:border-zinc-800 space-y-1">
                           {email.headers.map(header => (

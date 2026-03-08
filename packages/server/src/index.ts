@@ -8,7 +8,7 @@ import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import { promisify } from 'util'
 import { learnFromDeletions, learnFromRewrite, learnFromTrajectoryRevisions, learnFromCodeRejection, learnFromActionRejection, getLearnedPreferences, clearPreferences, deletePreference } from './preference.js'
-import { createSession, getSession, listSessions, completeSession, setSessionRewriting, updateSessionPageStatus, updateSessionPayload } from './store.js'
+import { createSession, getSession, listSessions, completeSession, setSessionRewriting, updateSessionPageStatus, updateSessionPayload, updateSessionPayloadKeepStatus } from './store.js'
 import {
   buildMemoryCatalog,
   buildMemoryReviewPayload,
@@ -762,10 +762,23 @@ app.put('/api/sessions/:id/payload', (req, res) => {
     }
   }
 
-  updateSessionPayload(req.params.id, finalPayload)
+  // Check if any email still has replyState "loading" — if so, keep session in
+  // "rewriting" so the agent can PUT the finished draft in a follow-up call.
+  let hasLoadingReply = false
+  if (session.type === 'email_review') {
+    const inbox = Array.isArray(finalPayload?.inbox) ? finalPayload.inbox as Array<Record<string, unknown>> : []
+    hasLoadingReply = inbox.some(e => e.replyState === 'loading')
+  }
+
+  if (hasLoadingReply) {
+    updateSessionPayloadKeepStatus(req.params.id, finalPayload)
+  } else {
+    updateSessionPayload(req.params.id, finalPayload)
+  }
   const updated = getSession(req.params.id)
   const newRevision = updated?.revision ?? session.revision + 1
-  console.log(`[agentclick] Session ${session.id} payload updated, back to pending (revision=${newRevision})`)
+  const newStatus = hasLoadingReply ? 'rewriting' : 'pending'
+  console.log(`[agentclick] Session ${session.id} payload updated, status=${newStatus} (revision=${newRevision})`)
 
   // Notify main agent that sub-agent completed a rewrite round (fire-and-forget)
   if (session.sessionKey) {

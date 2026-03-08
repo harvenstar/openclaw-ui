@@ -194,7 +194,7 @@ The UI is not only a final approval screen. The user may:
 
 If the result indicates `requestReplyDraft: true` for an email:
 - update the payload quickly so the UI can show that email as loading
-- generate the reply draft yourself as the agent
+- generate the reply draft yourself as the agent — use the email body already present in the poll response payload (do not re-fetch from Gmail)
 - PUT the finished draft back into the same session
 - do not create a new session
 
@@ -286,7 +286,7 @@ curl -s -X PUT "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}/payload" \
 
 Rules:
 - Reuse the same `SESSION_ID` for the full interaction.
-- If the UI asked for loading first, PUT a fast loading-state update, then PUT the completed draft.
+- **Two-PUT pattern for replies:** first PUT a loading-state update (`replyState: "loading"`), then PUT the completed draft (`replyState: "ready"` with `replyDraft`). The server keeps the session in `rewriting` status as long as any email has `replyState: "loading"`, so the second PUT is accepted.
 - If PUT fails, fix it before continuing.
 
 ## Completion Rules
@@ -322,3 +322,4 @@ Assume the page behaves like this and update payloads accordingly:
 - If the environment cannot keep a long blocking wait, poll the session every 10 seconds instead.
 - Do not claim a reply came from Gmail or from a background process if the agent generated it.
 - Prefer the bundled parallel fetch script for inbox loading, and use direct `gog` calls for one-off follow-up detail when needed.
+- The `/wait` and short-poll responses include the full session payload. Use this data to generate reply drafts — do not re-fetch emails from Gmail unless the body is missing.
