@@ -153,7 +153,7 @@ async function createOrUpdateGmailDraft(email: GmailReviewEmail, editedDraft: Re
   const replyToArgs = email.gmailMessageId ? ['--reply-to-message-id', email.gmailMessageId] : []
 
   if (email.gmailDraftId) {
-    const updated = await runGogJson<{ id: string }>([
+    const updated = await runGogJson<{ draftId: string }>([
       'gmail', 'drafts', 'update', email.gmailDraftId,
       '--subject', subject,
       '--to', to,
@@ -165,10 +165,10 @@ async function createOrUpdateGmailDraft(email: GmailReviewEmail, editedDraft: Re
       '--results-only',
       '--no-input',
     ])
-    return updated.id
+    return updated.draftId
   }
 
-  const created = await runGogJson<{ id: string }>([
+  const created = await runGogJson<{ draftId: string }>([
     'gmail', 'drafts', 'create',
     '--subject', subject,
     '--to', to,
@@ -180,7 +180,7 @@ async function createOrUpdateGmailDraft(email: GmailReviewEmail, editedDraft: Re
     '--results-only',
     '--no-input',
   ])
-  return created.id
+  return created.draftId
 }
 
 async function syncMarkedRead(threadIds: string[]): Promise<void> {
