@@ -1,20 +1,53 @@
 # AgentClick
 
-![AgentClick icon](./icon.png)
+<p align="center">
+  <img src="./icon.png" alt="AgentClick icon" width="180" />
+</p>
 
-AI agents fail silently and take irreversible actions. AgentClick puts a human review step between your agent and the world.
+<p align="center">
+  Human review UI for AI agents.
+</p>
 
-[![npm version](https://img.shields.io/npm/v/agentclick)](https://www.npmjs.com/package/agentclick)
-[![license](https://img.shields.io/npm/l/agentclick)](LICENSE)
-[![npm downloads](https://img.shields.io/npm/dm/agentclick)](https://www.npmjs.com/package/agentclick)
+<p align="center">
+  Move from terminal-only interaction to a shared browser workflow where the agent can propose, the user can inspect and edit, and only then the action continues.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/agentclick"><img src="https://img.shields.io/npm/v/agentclick" alt="npm version"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/agentclick" alt="license"></a>
+  <a href="https://www.npmjs.com/package/agentclick"><img src="https://img.shields.io/npm/dm/agentclick" alt="npm downloads"></a>
+</p>
 
 ---
 
-## Why AgentClick
+## What AgentClick Is For
 
-- **Not just approve/deny** -- edit the email subject, change the command, modify the payload before it sends.
-- **Preference learning** -- delete a paragraph and tell AgentClick why. It writes the rule to disk so your agent never makes the same mistake again.
-- **Framework-agnostic** -- works with OpenAI, Anthropic, LangChain, or any HTTP-capable agent. Just POST and long-poll.
+Most agents still interact like this:
+
+- user types in terminal
+- agent prints text
+- agent acts
+
+That is too narrow for high-risk or high-context work.
+
+AgentClick extends the interaction into a browser UI so the agent can hand off a structured review surface for things like:
+
+- emails and inbox triage
+- shell commands and risky actions
+- plans and trajectories
+- forms and selections
+- memory review
+
+The goal is simple: keep the speed of terminal agents, but add a real review layer before the agent commits to irreversible work.
+
+---
+
+## Why It Helps
+
+- **Edit before execution**: the user can change the draft, command, or payload instead of only approve/reject.
+- **Shared visual context**: the agent and user move from raw terminal text to a purpose-built UI.
+- **Preference learning**: feedback from review can be persisted so the agent improves over time.
+- **Framework-agnostic**: anything that can `POST` JSON and poll an HTTP endpoint can use it.
 
 ---
 
@@ -22,84 +55,54 @@ AI agents fail silently and take irreversible actions. AgentClick puts a human r
 
 ```bash
 npm install -g @harvenstar/agentclick
-agentclick              # local only
-agentclick --remote     # + public URL for phone / remote access
+agentclick
 ```
 
-`--remote` automatically downloads and starts a [Cloudflare Quick Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/) — no account needed. A public HTTPS URL is printed in the terminal; open it on any device.
-
-Then test it with a mock session:
+For remote access from another device:
 
 ```bash
-curl -X POST http://localhost:3001/api/review \
-  -H "Content-Type: application/json" \
-  -d '{"type":"code_review","sessionKey":"test","payload":{"command":"rm -rf /tmp/old-cache","cwd":"/home/user","explanation":"Clean up stale cache directory","risk":"medium"}}'
+agentclick --remote
 ```
 
-A browser tab opens automatically. Review, approve or reject, and close the tab.
+`--remote` automatically downloads and starts a [Cloudflare Quick Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/). It prints a public HTTPS URL you can open on your phone or another machine.
 
 ---
 
-## How It Works
+## Use It With An Agent
 
-1. **Agent POSTs structured data** to `http://localhost:3001/api/review` with a session key.
-2. **User reviews, edits, and approves** in the browser -- paragraph-level delete/rewrite for emails, approve/reject for commands and actions.
-3. **Agent receives the result** via long-poll (`GET /api/sessions/:id/wait`) and continues execution.
+If your agent can work with local repos and local skills, keep the instructions short.
 
-No WebSockets, no framework plugins. One HTTP endpoint in, one HTTP endpoint out.
+Example:
 
----
+1. Ask the agent to download or clone AgentClick.
+2. Ask the agent to load the skill from this repo.
+3. Ask the agent to use AgentClick for review-heavy tasks.
 
-## Comparison
+Prompt:
 
-| Feature | AgentClick | AgentGate | LangGraph interrupt() | Vercel AI SDK |
-|---|---|---|---|---|
-| Pre-built review UI | Yes | No | No | No |
-| Edit before approve | Yes | No | No | No |
-| Preference learning | Yes | No | No | No |
-| Framework-agnostic | Yes | Yes | LangGraph only | Vercel only |
-| Self-hosted | Yes | Yes | Yes | Cloud |
+```text
+Download agentlayer-io/AgentClick, load its SKILL.md, start it locally, and use it whenever you need a browser review UI instead of only terminal output.
+```
 
----
-
-## Session Types
-
-- **email_review** -- two-column inbox and draft editor. Users can delete paragraphs with reasons, request rewrites, toggle intent suggestions, and confirm or regenerate.
-- **code_review** -- displays the shell command, working directory, affected files as a collapsible tree, and risk level. Approve or reject with an optional note.
-- **action_approval** -- generic high-risk action gate. Shows action description, detail, and risk badge. Approve or reject with an optional note.
-- **form_review** -- editable key-value form. Each field can be free-text or a dropdown. Agent receives the edited values on completion.
-- **selection_review** -- single or multi-select option picker. Agent receives the chosen option IDs.
-- **trajectory_review** -- DAG visualization of a multi-step agent execution. Users can mark incorrect steps, provide per-step guidance, set a resume point, and request a retry. Guidance with "Remember this" checked is persisted to `MEMORY.md` for future runs.
-- **plan_review** -- step tree with DAG layout for reviewing an agent's proposed plan before execution. Users can edit step labels, insert or remove steps, add constraints, choose an alternative plan, or request a regeneration.
-- **memory_review** -- grouped file browser for reviewing agent memory modifications. Users decide which files to include or disregard, accept or reject proposed edits, and leave a global note for the agent.
+If the agent supports sub-skills, the root [`SKILL.md`](./SKILL.md) routes to the right one automatically.
 
 ---
 
 ## Skill Layout
 
-The root `SKILL.md` is a router only. Detailed review workflows live in:
+The root skill is [`SKILL.md`](./SKILL.md). It routes to the right sub-skill.
 
-- `skills/clickui-approve/`
-- `skills/clickui-code/`
-- `skills/clickui-email/`
-- `skills/clickui-plan/`
-- `skills/clickui-trajectory/`
-- `skills/clickui-memory/`
-
-Use the sub-skill that matches the review type instead of expanding the root skill file.
-
----
-
-## API
-
-| Method | Endpoint | Description |
+| Skill | Path | Purpose |
 |---|---|---|
-| POST | `/api/review` | Agent creates a review session. Returns `{ sessionId, url }`. Browser opens automatically unless `noOpen: true` is passed. |
-| POST | `/api/review/batch` | Create multiple sessions at once. Pass `{ sessions: [...] }`. Returns `{ sessions: [{ sessionId, url }] }`. All sessions are silent (no browser open). |
-| GET | `/api/sessions/:id` | Fetch session data (payload, status, result). |
-| GET | `/api/sessions/:id/wait` | Long-poll. Blocks up to 5 minutes until the user completes the review. |
-| POST | `/api/sessions/:id/complete` | UI submits the user's decision. Triggers preference learning and agent callback. |
-| PUT | `/api/sessions/:id/payload` | Agent updates payload after a rewrite cycle. Only valid when session status is `rewriting`. |
+| Router | `SKILL.md` | Entry point that routes the agent to the right review workflow. |
+| Action Approval | `skills/clickui-approve/` | Approve or reject risky actions before execution. |
+| Code Review | `skills/clickui-code/` | Review shell commands, diffs, and code-related actions in UI. |
+| Email Review | `skills/clickui-email/` | Review inbox items, drafts, replies, and live email sessions. |
+| Plan Review | `skills/clickui-plan/` | Inspect and revise proposed plans before the agent runs them. |
+| Trajectory Review | `skills/clickui-trajectory/` | Review multi-step runs, mistakes, and resume points. |
+| Memory Review | `skills/clickui-memory/` | Review memory files and memory-management changes. |
+
+For direct agent usage, telling the agent to load the root skill is usually enough.
 
 ---
 
@@ -112,9 +115,12 @@ npm install
 npm run dev
 ```
 
-Server runs on `http://localhost:3001`, UI on `http://localhost:5173`.
+Development mode:
 
-For production-style single-port serving:
+- server: `http://localhost:38173`
+- web: `http://localhost:5173`
+
+Production-style single-port serving:
 
 ```bash
 npm run build
