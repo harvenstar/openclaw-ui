@@ -88,13 +88,21 @@ If you cannot generate a diff (e.g. the command doesn't touch tracked files), om
 
 **Legacy fallback**: If you only have a flat list of paths and no diffs, use `"files": ["src/index.ts", ...]` instead of `affectedFiles`. The UI will show the tree without diff panels.
 
-## Step 3: Wait for decision (blocks up to 5 minutes)
+## Step 3: Poll for decision
 
 ```bash
-curl -s "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}/wait"
+# Detect environment: GOG_ACCOUNT is set in Docker (docker-compose.yml), absent elsewhere
+if [ -n "$GOG_ACCOUNT" ]; then
+  # Docker: use short-poll (one curl per exec, you are the loop controller)
+  curl -s "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}"
+else
+  # Non-Docker: use blocking /wait
+  curl -s --max-time 310 "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}/wait"
+fi
 ```
 
-The browser opens automatically. This call blocks until the user approves or rejects.
+- In Docker (`GOG_ACCOUNT` set): run ONE curl per exec call, check result in your context, then poll again. Do NOT use a bash while loop. You are the loop controller.
+- In non-Docker: the `/wait` call blocks until the user approves or rejects, then process the result.
 
 ## Step 4: Act on the decision
 
