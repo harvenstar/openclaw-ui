@@ -150,6 +150,8 @@ async function createOrUpdateGmailDraft(email: GmailReviewEmail, editedDraft: Re
   const cc = Array.isArray(editedDraft.cc) ? editedDraft.cc.filter((item): item is string => typeof item === 'string' && item.trim().length > 0) : []
   const bcc = Array.isArray(editedDraft.bcc) ? editedDraft.bcc.filter((item): item is string => typeof item === 'string' && item.trim().length > 0) : []
 
+  const replyToArgs = email.gmailMessageId ? ['--reply-to-message-id', email.gmailMessageId] : []
+
   if (email.gmailDraftId) {
     const updated = await runGogJson<{ id: string }>([
       'gmail', 'drafts', 'update', email.gmailDraftId,
@@ -158,7 +160,7 @@ async function createOrUpdateGmailDraft(email: GmailReviewEmail, editedDraft: Re
       '--body', body,
       ...(cc.length > 0 ? ['--cc', cc.join(',')] : []),
       ...(bcc.length > 0 ? ['--bcc', bcc.join(',')] : []),
-      '--reply-to-message-id', email.gmailMessageId,
+      ...replyToArgs,
       '--json',
       '--results-only',
       '--no-input',
@@ -173,7 +175,7 @@ async function createOrUpdateGmailDraft(email: GmailReviewEmail, editedDraft: Re
     '--body', body,
     ...(cc.length > 0 ? ['--cc', cc.join(',')] : []),
     ...(bcc.length > 0 ? ['--bcc', bcc.join(',')] : []),
-    '--reply-to-message-id', email.gmailMessageId,
+    ...replyToArgs,
     '--json',
     '--results-only',
     '--no-input',
