@@ -3,12 +3,13 @@
 Use this file only to route to the right sub-skill.
 
 Base flow:
-1. Resolve `AGENTCLICK_URL` or default to `http://localhost:${AGENTCLICK_PORT:-${PORT:-38173}}`.
-2. Check `GET /api/health` before creating a session.
-3. If the server is not reachable, start AgentClick locally from this repo with `npm run start`, then re-check `GET /api/health`.
-4. Create a session with `POST /api/review`.
-5. Treat the session as live and monitor `GET /api/sessions/:id/wait`.
-6. If status is `rewriting`, update with `PUT /api/sessions/:id/payload` and continue monitoring the same session until completion, timeout, or stop-monitor.
+1. Detect AgentClick URL: try `http://localhost:38173/api/health` first; if unreachable, use `http://host.docker.internal:38173`.
+2. If the server is not reachable at either address, start AgentClick locally with `npm start`, then re-check.
+3. Create a session with `POST /api/review`.
+4. Monitor the session — polling strategy depends on environment (see sub-skill for details):
+   - Non-Docker (Claude Code, Codex, local): use `GET /api/sessions/:id/wait` (blocks until state changes).
+   - Docker (OpenClaw): use short-poll `GET /api/sessions/:id` one call per exec; you are the loop controller.
+5. If status is `rewriting`, update with `PUT /api/sessions/:id/payload` and continue monitoring the same session until `status=completed` or `pageStatus.stopMonitoring=true`.
 
 Sub-skills:
 - `action_approval` -> `skills/clickui-approve/SKILL.md`
