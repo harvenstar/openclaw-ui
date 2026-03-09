@@ -36,7 +36,6 @@ AgentClick extends the interaction into a browser UI so the agent can hand off a
 - emails and inbox triage
 - shell commands and risky actions
 - plans and trajectories
-- forms and selections
 - memory review
 
 The goal is simple: keep the speed of terminal agents, but add a real review layer before the agent commits to irreversible work.
@@ -62,6 +61,8 @@ npm install -g @harvenstar/agentclick
 agentclick
 ```
 
+Then open `http://localhost:38173` in your browser.
+
 For remote access from another device:
 
 ```bash
@@ -74,24 +75,25 @@ agentclick --remote
 
 ## Use It With An Agent
 
-If your agent can work with local repos and local skills, keep the instructions short.
+**Option A — npm global install (AgentClick already running)**
 
-Example:
-
-1. Ask the agent to download or clone AgentClick.
-2. Ask the agent to load the skill from this repo.
-3. Ask the agent to use AgentClick for review-heavy tasks.
-
-Prompt:
+Start AgentClick first (`agentclick`), then tell your agent:
 
 ```text
-Download agentlayer-io/AgentClick, load its SKILL.md, start it locally, and use it whenever you need a browser review UI instead of only terminal output.
+AgentClick is running at http://localhost:38173. Use it whenever you need a browser review UI — for email triage, risky commands, plans, or memory review.
 ```
 
-Supported agent setups include Claude Code, Codex, and OpenClaw.
-For OpenClaw, prefer a stronger model rather than a cheaper weaker one, because the skill-routing flow works best when the model follows instructions consistently.
+**Option B — working inside the AgentClick repo**
 
-If the agent supports sub-skills, the root [`SKILL.md`](./SKILL.md) routes to the right one automatically.
+If your agent can read local files, point it at the skill router:
+
+```text
+Load SKILL.md from this repo, start AgentClick locally, and use it whenever you need a browser review UI instead of only terminal output.
+```
+
+The root [`SKILL.md`](./SKILL.md) routes to the right sub-skill automatically.
+
+Supported agent setups include Claude Code, Codex, and OpenClaw.
 
 ---
 
