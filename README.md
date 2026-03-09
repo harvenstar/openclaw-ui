@@ -5,11 +5,12 @@
 </p>
 
 <p align="center">
-  Human review UI for AI agents.
+  🧠 Human-in-the-loop review UI for autonomous AI agents
 </p>
 
 <p align="center">
-  Move from terminal-only interaction to a shared browser workflow where the agent can propose, the user can inspect and edit, and only then the action continues.
+  AgentClick is a <b>skill-based plugin</b> that adds a browser review layer to terminal agents.<br/>
+  Agents propose actions, users inspect and edit in a browser UI, then the agent continues.
 </p>
 
 <p align="center">
@@ -21,40 +22,58 @@
 
 ---
 
-## What AgentClick Is For
+## ⚙️ How It Works
 
 Most agents still interact like this:
 
-- user types in terminal
-- agent prints text
-- agent acts
+```
+User → Terminal → Agent → Action
+```
 
-That is too narrow for high-risk or high-context work.
+AgentClick adds a review step:
 
-AgentClick extends the interaction into a browser UI so the agent can hand off a structured review surface for things like:
+```
+Agent proposes → Browser UI opens → User inspects and edits → Agent executes
+```
 
-- emails and inbox triage
-- shell commands and risky actions
-- plans and trajectories
-- memory review
-
-The goal is simple: keep the speed of terminal agents, but add a real review layer before the agent commits to irreversible work.
-
-AgentClick is a good fit for agent environments such as Claude Code, Codex, and OpenClaw.
-For OpenClaw in particular, use a stronger model with solid instruction-following, since the workflow is skill-based and depends on the agent following routing and review instructions reliably.
+This keeps the speed of autonomous agents while adding a human-in-the-loop safeguard before irreversible work.
 
 ---
 
-## Why It Helps
+## 🤖 Supported Agents
 
-- **Edit before execution**: the user can change the draft, command, or payload instead of only approve/reject.
-- **Shared visual context**: the agent and user move from raw terminal text to a purpose-built UI.
-- **Preference learning**: feedback from review can be persisted so the agent improves over time.
-- **Framework-agnostic**: anything that can `POST` JSON and poll an HTTP endpoint can use it.
+AgentClick works as a **skill / plugin** for modern AI agents. Any agent that can run local tools, send HTTP requests, and follow skill instructions can integrate with it.
+
+- Claude Code
+- Codex
+- OpenClaw
+- Custom tool-calling agents
 
 ---
 
-## Quick Start
+## 🧩 What It's For
+
+AgentClick extends the agent interaction into a browser UI for tasks like:
+
+- 📧 email drafting and inbox triage
+- 🖥️ shell commands and risky actions
+- 📋 plans and execution trajectories
+- 🧠 memory review and updates
+
+The goal: keep the speed of terminal agents, but add a real review layer before the agent commits to irreversible work.
+
+---
+
+## ✨ Why It Helps
+
+- **Edit before execution** — change the draft, command, or payload instead of only approve/reject.
+- **Shared visual context** — move from raw terminal text to a purpose-built UI.
+- **Preference learning** — feedback from review is persisted so the agent improves over time.
+- **Framework-agnostic** — anything that can `POST` JSON and poll an HTTP endpoint can use it.
+
+---
+
+## 🚀 Quick Start
 
 ```bash
 npm install -g @harvenstar/agentclick
@@ -73,7 +92,7 @@ agentclick --remote
 
 ---
 
-## Use It With An Agent
+## 🧠 Use It With An Agent
 
 **Option A — npm global install (AgentClick already running)**
 
@@ -93,29 +112,29 @@ Load SKILL.md from this repo, start AgentClick locally, and use it whenever you 
 
 The root [`SKILL.md`](./SKILL.md) routes to the right sub-skill automatically.
 
-Supported agent setups include Claude Code, Codex, and OpenClaw.
+For OpenClaw in particular, use a stronger model with solid instruction-following, since the workflow is skill-based and depends on the agent following routing instructions reliably.
 
 ---
 
-## Skill Layout
+## 🧱 Skill Layout
 
-The root skill is [`SKILL.md`](./SKILL.md). It routes to the right sub-skill.
+AgentClick is built around a **skill-based architecture**. The root [`SKILL.md`](./SKILL.md) acts as a router that directs the agent to the appropriate sub-skill.
 
 | Skill | Path | Purpose | How to Use |
 |---|---|---|---|
 | Router | `SKILL.md` | Entry point that routes the agent to the right review workflow. | `Load SKILL.md and use AgentClick UI for review.` |
 | Action Approval | `skills/clickui-approve/` | Approve or reject risky actions before execution. | `Before deleting those files, show me an approval review in AgentClick UI.` |
-| Code Review | `skills/clickui-code/` | Review shell commands, diffs, and code-related actions in UI. | `Show me a code review in AgentClick UI before running that command.` |
+| Code Review | `skills/clickui-code/` | Review shell commands, diffs, and code-related actions. | `Show me a code review in AgentClick UI before running that command.` |
 | Email Review | `skills/clickui-email/` | Review inbox items, drafts, replies, and live email sessions. | `Open my inbox in AgentClick UI and let me triage emails.` |
 | Plan Review | `skills/clickui-plan/` | Inspect and revise proposed plans before the agent runs them. | `Show me the plan in AgentClick UI before you start.` |
 | Trajectory Review | `skills/clickui-trajectory/` | Review multi-step runs, mistakes, and resume points. | `Show me what you just did in AgentClick UI so I can review the steps.` |
 | Memory Review | `skills/clickui-memory/` | Review memory files and memory-management changes. | `Open memory management in AgentClick UI and let me pick which files to include.` |
 
-For direct agent usage, telling the agent to load the root skill is usually enough.
+In most cases, telling the agent to load the root skill is enough.
 
 ---
 
-## Development
+## 🛠️ Development
 
 ```bash
 git clone https://github.com/agentlayer-io/AgentClick.git
@@ -138,6 +157,6 @@ npm start
 
 ---
 
-## License
+## 📜 License
 
-MIT
+[MIT](./LICENSE)
