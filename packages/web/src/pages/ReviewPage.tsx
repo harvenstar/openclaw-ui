@@ -314,15 +314,15 @@ export default function ReviewPage() {
             if (!Array.isArray(nextPayload.inbox)) return data.payload as EmailPayload | InboxPayload
             if (pendingAgentAction === 'readMore' || pendingAgentAction === 'reply') {
               const mergedInbox = mergeInboxEmails(currentPayload.inbox, nextPayload.inbox).map(email => {
-                if (
-                  pendingAgentAction === 'reply' &&
-                  activeReplyRequestEmailId &&
-                  email.id === activeReplyRequestEmailId &&
-                  selectedEmailId === activeReplyRequestEmailId &&
-                  rightView === 'draft' &&
-                  email.replyState === 'ready'
-                ) {
-                  return { ...email, replyUnread: false }
+                if (pendingAgentAction === 'reply' && activeReplyRequestEmailId && email.id === activeReplyRequestEmailId) {
+                  // Preserve local 'loading' state if server hasn't caught up yet (stale revision)
+                  const localEmail = currentPayload.inbox.find((e: EmailItem) => e.id === email.id)
+                  if (localEmail?.replyState === 'loading' && (!email.replyState || email.replyState === 'idle')) {
+                    return { ...email, replyState: 'loading' as const }
+                  }
+                  if (selectedEmailId === activeReplyRequestEmailId && rightView === 'draft' && email.replyState === 'ready') {
+                    return { ...email, replyUnread: false }
+                  }
                 }
                 return email
               })
