@@ -1,7 +1,7 @@
 # AgentClick
 
 <p align="center">
-  <img src="./icon.png" alt="AgentClick icon" width="180" />
+  <img src="https://raw.githubusercontent.com/agentlayer-io/AgentClick/main/icon.png" alt="AgentClick icon" width="180" />
 </p>
 
 <p align="center">
