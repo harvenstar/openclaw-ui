@@ -157,6 +157,8 @@ export default function MemoryReviewPage() {
   const [compressionDecisionMap, setCompressionDecisionMap] = useState<Map<string, CompressionDecision>>(new Map())
   const [modAcceptMap, setModAcceptMap] = useState<Map<string, boolean>>(new Map())
   const [focusedSectionTitle, setFocusedSectionTitle] = useState<string>('')
+  const [selectedFileContent, setSelectedFileContent] = useState<string | null>(null)
+  const [selectedFileContentLoading, setSelectedFileContentLoading] = useState(false)
 
   const applyCatalog = (basePayload: MemoryPayload, nextCatalog: Partial<MemoryPayload>) => ({
     ...basePayload,
@@ -281,6 +283,17 @@ export default function MemoryReviewPage() {
     }, 60)
     return () => window.clearTimeout(timer)
   }, [focusedSectionTitle, selectedFileId, diffLines])
+
+  useEffect(() => {
+    if (!selectedFile) { setSelectedFileContent(null); return }
+    setSelectedFileContent(null)
+    setSelectedFileContentLoading(true)
+    fetch(`/api/memory/file?path=${encodeURIComponent(selectedFile.path)}`)
+      .then(r => r.json())
+      .then((data: { content?: string }) => { setSelectedFileContent(data.content ?? null) })
+      .catch(() => { setSelectedFileContent(null) })
+      .finally(() => setSelectedFileContentLoading(false))
+  }, [selectedFile?.path])
 
   const toggleCollapse = (idValue: string) => {
     setCollapsedIds(prev => {
@@ -756,6 +769,30 @@ export default function MemoryReviewPage() {
                     <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1">
                       {payload.compressionRecommendations.find(r => r.fileId === selectedFile.id)?.reason}
                     </p>
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-xs text-zinc-400 dark:text-slate-500 uppercase mb-1">File Content</p>
+                  {selectedFileContentLoading && (
+                    <p className="text-xs text-zinc-400 dark:text-slate-500">Loading…</p>
+                  )}
+                  {!selectedFileContentLoading && selectedFileContent !== null && (
+                    <div className="border border-gray-200 dark:border-zinc-700 rounded overflow-hidden max-h-[60vh] overflow-y-auto">
+                      <table className="w-full text-xs font-mono border-collapse">
+                        <tbody>
+                          {selectedFileContent.split('\n').map((line, idx) => (
+                            <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                              <td className="w-10 text-right px-2 py-0.5 text-zinc-400 dark:text-slate-500 select-none border-r border-gray-100 dark:border-zinc-800">{idx + 1}</td>
+                              <td className="px-2 py-0.5 whitespace-pre-wrap break-words text-zinc-700 dark:text-slate-300">{line}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {!selectedFileContentLoading && selectedFileContent === null && (
+                    <p className="text-xs text-zinc-400 dark:text-slate-500">Content unavailable.</p>
                   )}
                 </div>
 

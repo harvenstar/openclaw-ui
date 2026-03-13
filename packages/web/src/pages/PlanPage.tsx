@@ -120,7 +120,7 @@ function RiskBadge({ risk }: { risk: RiskLevel }) {
 // ─── DAG layout engine (same as TrajectoryPage) ──────────────────────────────
 
 const DEFAULT_NODE_W = 420
-const MIN_NODE_H = 220
+const MIN_NODE_H = 80
 const FOLDED_NODE_H = 120
 const MIN_NODE_W = 320
 const MAX_NODE_W = 620
@@ -320,14 +320,14 @@ function DagEdgeLayer({
   nodePositions,
   connectedSet,
   hoveredNodeId,
-  nodeW,
+  nodeWidths,
   nodeHeights,
 }: {
   edges: LayoutEdge[]
   nodePositions: Map<string, { x: number; y: number }>
   connectedSet: Set<string>
   hoveredNodeId: string | null
-  nodeW: number
+  nodeWidths: Map<string, number>
   nodeHeights: Map<string, number>
 }) {
   return (
@@ -336,11 +336,13 @@ function DagEdgeLayer({
         const from = nodePositions.get(e.fromId)
         const to = nodePositions.get(e.toId)
         if (!from || !to) return null
-        const fromCx = from.x + nodeW / 2
-        const toCx = to.x + nodeW / 2
-        const x1 = Math.max(from.x, Math.min(from.x + nodeW, toCx))
+        const fromW = nodeWidths.get(e.fromId) ?? DEFAULT_NODE_W
+        const toW = nodeWidths.get(e.toId) ?? DEFAULT_NODE_W
+        const fromCx = from.x + fromW / 2
+        const toCx = to.x + toW / 2
+        const x1 = Math.max(from.x, Math.min(from.x + fromW, toCx))
         const y1 = from.y + (nodeHeights.get(e.fromId) ?? MIN_NODE_H)
-        const x2 = Math.max(to.x, Math.min(to.x + nodeW, fromCx))
+        const x2 = Math.max(to.x, Math.min(to.x + toW, fromCx))
         const y2 = to.y
         const isHighlighted = hoveredNodeId ? connectedSet.has(e.fromId) && connectedSet.has(e.toId) : false
         const isDimmed = hoveredNodeId && !isHighlighted
@@ -994,13 +996,32 @@ function PlanDagCanvas({
     return () => obs.disconnect()
   }, [])
 
-  const nodeW = useMemo(() => {
-    if (viewportW <= 0) return DEFAULT_NODE_W
-    const cols = Math.max(1, layout.cols)
-    const usable = viewportW - 48 - (cols - 1) * GAP_X
-    const perCol = Math.floor(usable / cols)
-    return Math.max(MIN_NODE_W, Math.min(MAX_NODE_W, perCol))
-  }, [viewportW, layout.cols])
+  // Per-row column counts
+  const rowColCounts = useMemo(() => {
+    const m = new Map<number, number>()
+    for (const n of layout.nodes) m.set(n.row, Math.max(m.get(n.row) ?? 0, n.col + 1))
+    return m
+  }, [layout.nodes])
+
+  // Per-row node width: single-step rows fill available width; parallel rows split adaptively
+  const rowWidths = useMemo(() => {
+    const m = new Map<number, number>()
+    const usable = Math.max(0, viewportW > 0 ? viewportW - 48 : DEFAULT_NODE_W * 2)
+    for (const [row, cols] of rowColCounts) {
+      const rowUsable = usable - (cols - 1) * GAP_X
+      const perCol = Math.floor(rowUsable / cols)
+      const maxW = cols > 1 ? Math.min(MAX_NODE_W, 360) : MAX_NODE_W
+      m.set(row, Math.max(MIN_NODE_W, Math.min(maxW, perCol)))
+    }
+    return m
+  }, [viewportW, rowColCounts])
+
+  // Per-node width lookup
+  const nodeWidths = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const n of layout.nodes) m.set(n.stepId, rowWidths.get(n.row) ?? DEFAULT_NODE_W)
+    return m
+  }, [layout.nodes, rowWidths])
 
   const nodeHeights = useMemo(() => {
     const map = new Map<string, number>()
@@ -1009,7 +1030,7 @@ function PlanDagCanvas({
         n.stepId,
         estimateNodeHeight(
           n.step,
-          nodeW,
+          nodeWidths.get(n.stepId) ?? DEFAULT_NODE_W,
           selectedNodeId === n.stepId,
           foldedIds.has(n.stepId),
           (constraints.get(n.stepId) ?? []).length
@@ -1017,7 +1038,7 @@ function PlanDagCanvas({
       )
     }
     return map
-  }, [layout.nodes, nodeW, selectedNodeId, foldedIds, constraints])
+  }, [layout.nodes, nodeWidths, selectedNodeId, foldedIds, constraints])
 
   const rowOffsets = useMemo(() => {
     const maxByRow = new Map<number, number>()
@@ -1038,20 +1059,24 @@ function PlanDagCanvas({
   const nodePositions = useMemo(() => {
     const positions = new Map<string, { x: number; y: number }>()
     for (const n of layout.nodes) {
+      const w = rowWidths.get(n.row) ?? DEFAULT_NODE_W
       positions.set(n.stepId, {
-        x: n.col * (nodeW + GAP_X),
+        x: n.col * (w + GAP_X),
         y: rowOffsets.offsets.get(n.row) ?? 0,
       })
     }
     return positions
-  }, [layout.nodes, nodeW, rowOffsets.offsets])
+  }, [layout.nodes, rowWidths, rowOffsets.offsets])
 
   const connectedSet = useMemo(() => {
     if (!hoveredNodeId) return new Set<string>()
     return computeConnectedSet(hoveredNodeId, layout.edges)
   }, [hoveredNodeId, layout.edges])
 
-  const canvasW = layout.cols * (nodeW + GAP_X) - GAP_X
+  const canvasW = Math.max(0, ...Array.from(rowColCounts.entries()).map(([row, cols]) => {
+    const w = rowWidths.get(row) ?? DEFAULT_NODE_W
+    return cols * w + (cols - 1) * GAP_X
+  }))
   const canvasH = rowOffsets.totalHeight
 
   const selectedStep = selectedNodeId ? stepMap.get(selectedNodeId) : null
@@ -1066,13 +1091,13 @@ function PlanDagCanvas({
       if (pos) {
         positions.push({
           afterId: node.stepId,
-          x: pos.x + nodeW / 2 - 12,
+          x: pos.x + (nodeWidths.get(node.stepId) ?? DEFAULT_NODE_W) / 2 - 12,
           y: pos.y + (nodeHeights.get(node.stepId) ?? MIN_NODE_H) + (GAP_Y / 2) - 12,
         })
       }
     }
     return positions
-  }, [layout.nodes, nodePositions, nodeW, nodeHeights])
+  }, [layout.nodes, nodePositions, nodeWidths, nodeHeights])
 
   const handleNodeClick = useCallback((stepId: string, hasChildren: boolean) => {
     if (hasChildren) {
@@ -1106,7 +1131,7 @@ function PlanDagCanvas({
               nodePositions={nodePositions}
               connectedSet={connectedSet}
               hoveredNodeId={hoveredNodeId}
-              nodeW={nodeW}
+              nodeWidths={nodeWidths}
               nodeHeights={nodeHeights}
             />
 
@@ -1120,7 +1145,7 @@ function PlanDagCanvas({
                   node={n}
                   x={pos.x}
                   y={pos.y}
-                  nodeW={nodeW}
+                  nodeW={nodeWidths.get(n.stepId) ?? DEFAULT_NODE_W}
                   nodeH={nodeHeights.get(n.stepId) ?? MIN_NODE_H}
                   isHovered={hoveredNodeId === n.stepId}
                   isSelected={selectedNodeId === n.stepId}

@@ -19,6 +19,7 @@ export interface MemoryFileItem {
   matchedBySearch: boolean
   preview: string
   sections: Array<{ id: string; title: string }>
+  guidance: string
 }
 
 export interface MemoryModification {
@@ -68,6 +69,7 @@ export interface MemoryResolveResult {
 interface MemoryPreferenceState {
   includedPaths: string[]
   includedDirectories: string[]
+  fileGuidance: Record<string, string>
 }
 
 const MEMORY_INCLUDE_STATE_PATH = path.join(os.homedir(), '.openclaw', 'agentclick-memory-includes.json')
@@ -120,16 +122,19 @@ function normalizePreferenceState(raw: unknown): MemoryPreferenceState {
   const includedDirectories = Array.isArray(parsed.includedDirectories)
     ? parsed.includedDirectories.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     : []
-  return { includedPaths, includedDirectories }
+  const fileGuidance = (parsed.fileGuidance && typeof parsed.fileGuidance === 'object' && !Array.isArray(parsed.fileGuidance))
+    ? Object.fromEntries(Object.entries(parsed.fileGuidance as Record<string, unknown>).filter(([, v]) => typeof v === 'string')) as Record<string, string>
+    : {}
+  return { includedPaths, includedDirectories, fileGuidance }
 }
 
 function readMemoryPreferenceState(): MemoryPreferenceState {
   try {
-    if (!fs.existsSync(MEMORY_INCLUDE_STATE_PATH)) return { includedPaths: [], includedDirectories: [] }
+    if (!fs.existsSync(MEMORY_INCLUDE_STATE_PATH)) return { includedPaths: [], includedDirectories: [], fileGuidance: {} }
     const raw = fs.readFileSync(MEMORY_INCLUDE_STATE_PATH, 'utf-8')
     return normalizePreferenceState(JSON.parse(raw))
   } catch {
-    return { includedPaths: [], includedDirectories: [] }
+    return { includedPaths: [], includedDirectories: [], fileGuidance: {} }
   }
 }
 
@@ -381,6 +386,7 @@ export function buildMemoryCatalog(input: {
       matchedBySearch: false,
       preview: firstPreview(content),
       sections: parseSections(content),
+      guidance: preferenceState.fileGuidance[absPath] ?? '',
     })
   }
 
@@ -494,6 +500,7 @@ export function includeMemoryFileInContext(input: {
   const nextState: MemoryPreferenceState = {
     includedPaths: uniqueSortedPaths(Array.from(current.values())),
     includedDirectories: uniqueSortedPaths(state.includedDirectories),
+    fileGuidance: state.fileGuidance,
   }
   if (input.persist !== false) writeMemoryPreferenceState(nextState)
   return { ok: true, includedPaths: nextState.includedPaths, includedDirectories: nextState.includedDirectories }
@@ -515,6 +522,7 @@ export function removeMemoryFileFromContext(input: {
   const nextState: MemoryPreferenceState = {
     includedPaths: uniqueSortedPaths(Array.from(current.values())),
     includedDirectories: uniqueSortedPaths(state.includedDirectories),
+    fileGuidance: state.fileGuidance,
   }
   writeMemoryPreferenceState(nextState)
   return { ok: true, includedPaths: nextState.includedPaths, includedDirectories: nextState.includedDirectories }
@@ -533,6 +541,7 @@ export function updateMemoryPreferences(input: {
     includedDirectories: uniqueSortedPaths(
       (input.includedDirectories ?? state.includedDirectories).map(value => normalizeInputPath(input.projectRoot, value)).filter(Boolean)
     ),
+    fileGuidance: state.fileGuidance,
   }
   writeMemoryPreferenceState(nextState)
   return nextState
@@ -594,4 +603,18 @@ export function buildMemoryReviewPayload(input: {
     persistedDirectoryPaths,
     searchQuery: input.searchQuery?.trim() || undefined,
   }
+}
+
+export function readFileGuidance(filePath: string): string {
+  const state = readMemoryPreferenceState()
+  return state.fileGuidance[path.resolve(filePath)] ?? ''
+}
+
+export function writeFileGuidance(filePath: string, guidance: string): void {
+  const state = readMemoryPreferenceState()
+  const next: MemoryPreferenceState = {
+    ...state,
+    fileGuidance: { ...state.fileGuidance, [path.resolve(filePath)]: guidance },
+  }
+  writeMemoryPreferenceState(next)
 }

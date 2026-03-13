@@ -12,6 +12,7 @@ interface MemoryFile {
   inProject: boolean
   inAgentCache: boolean
   relatedMarkdown: boolean
+  guidance?: string
 }
 
 interface MemoryGroup {
@@ -23,12 +24,41 @@ interface MemoryGroup {
 interface CatalogResponse {
   groups: MemoryGroup[]
   files: MemoryFile[]
+  modifications?: MemoryModification[]
 }
 
 interface FileContentResponse {
   path: string
   relativePath: string
   content: string
+}
+
+interface MemoryModification {
+  id: string
+  fileId: string
+  filePath: string
+  location: string
+  oldContent: string
+  newContent: string
+  generatedContent: string
+}
+
+function computeSimpleDiff(oldText: string, newText: string): Array<{ type: 'context' | 'add' | 'remove'; text: string }> {
+  const oldLines = oldText.split('\n')
+  const newLines = newText.split('\n')
+  const out: Array<{ type: 'context' | 'add' | 'remove'; text: string }> = []
+  let i = 0
+  let j = 0
+  while (i < oldLines.length || j < newLines.length) {
+    if (i < oldLines.length && j < newLines.length && oldLines[i] === newLines[j]) {
+      out.push({ type: 'context', text: oldLines[i] })
+      i += 1; j += 1
+      continue
+    }
+    if (i < oldLines.length) { out.push({ type: 'remove', text: oldLines[i] ?? '' }); i += 1 }
+    if (j < newLines.length) { out.push({ type: 'add', text: newLines[j] ?? '' }); j += 1 }
+  }
+  return out
 }
 
 type PageStatusState = 'opened' | 'active' | 'hidden'
@@ -114,6 +144,8 @@ export default function MemoryManagementPage() {
   const [error, setError] = useState('')
   const [agentDeleteRequest, setAgentDeleteRequest] = useState('')
   const [waitingForRewrite, setWaitingForRewrite] = useState(false)
+  const [fileGuidance, setFileGuidance] = useState<string>('')
+  const [guidanceSaving, setGuidanceSaving] = useState(false)
   const pollRef = useRef<number | null>(null)
 
   const loadCatalog = useCallback(async () => {
@@ -199,14 +231,33 @@ export default function MemoryManagementPage() {
     return m
   }, [catalog])
 
+  const modificationByFileId = useMemo(() => {
+    const m = new Map<string, MemoryModification>()
+    for (const mod of catalog?.modifications ?? []) m.set(mod.fileId, mod)
+    return m
+  }, [catalog])
+
+  const changedFileIds = useMemo(() => new Set(Array.from(modificationByFileId.keys())), [modificationByFileId])
+
   const selectedFileId = useMemo(() => {
     if (!selectedPath) return null
     const file = catalog?.files.find(f => f.path === selectedPath)
     return file?.id ?? null
   }, [catalog, selectedPath])
 
+  const selectedModification = useMemo(() => {
+    if (!selectedFileId) return null
+    return modificationByFileId.get(selectedFileId) ?? null
+  }, [selectedFileId, modificationByFileId])
+
+  const diffLines = useMemo(() => {
+    if (!selectedModification) return []
+    return computeSimpleDiff(selectedModification.oldContent, selectedModification.newContent)
+  }, [selectedModification])
+
   const openFile = async (file: MemoryFile) => {
     setSelectedPath(file.path)
+    setFileGuidance(file.guidance ?? '')
     setAgentDeleteRequest('')
     setFileLoading(true)
     try {
@@ -222,8 +273,25 @@ export default function MemoryManagementPage() {
     }
   }
 
+  const saveGuidance = async (filePath: string, value: string) => {
+    setGuidanceSaving(true)
+    try {
+      await fetch('/api/memory/guidance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: filePath, guidance: value }),
+      })
+    } finally {
+      setGuidanceSaving(false)
+    }
+  }
+
   const openFileByPath = (relPath: string) => {
-    const file = catalog?.files.find(f => f.relativePath === relPath)
+    const file = catalog?.files.find(f =>
+      f.relativePath === relPath ||
+      f.relativePath === `/${relPath}` ||
+      f.relativePath === relPath.replace(/^\//, '')
+    )
     if (file) openFile(file)
   }
 
@@ -367,7 +435,7 @@ export default function MemoryManagementPage() {
               <div className="mt-4 space-y-4">
                 {mindGroups.map(group => {
                   const collapsed = collapsedMindGroups.has(group.id)
-                  const treeNodes = buildMemoryTree(group.files, new Set())
+                  const treeNodes = buildMemoryTree(group.files, changedFileIds)
                   return (
                     <div key={group.id}>
                       <button
@@ -415,6 +483,7 @@ export default function MemoryManagementPage() {
                             const file = fileMap.get(fileId)
                             if (!file) return null
                             const active = selectedPath === file.path
+                            const changed = changedFileIds.has(file.id)
                             return (
                               <button
                                 key={file.id}
@@ -422,11 +491,16 @@ export default function MemoryManagementPage() {
                                 className={`w-full text-left px-2 py-1.5 rounded border ${
                                   active
                                     ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950'
-                                    : 'border-gray-100 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                                    : changed
+                                      ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 hover:bg-amber-100 dark:hover:bg-amber-900'
+                                      : 'border-gray-100 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800'
                                 }`}
                                 title={file.path}
                               >
-                                <p className="text-xs font-mono text-zinc-700 dark:text-slate-300 truncate">{file.relativePath}</p>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  {changed && <span className="shrink-0 text-[10px] font-bold px-1 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-700 dark:text-amber-300">M</span>}
+                                  <p className={`text-xs font-mono truncate ${changed ? 'text-amber-700 dark:text-amber-300' : 'text-zinc-700 dark:text-slate-300'}`}>{file.relativePath}</p>
+                                </div>
                                 <p className="text-[11px] text-zinc-500 dark:text-slate-400 mt-0.5 truncate">{file.preview}</p>
                               </button>
                             )
@@ -481,6 +555,49 @@ export default function MemoryManagementPage() {
                       <p className="text-xs text-amber-700 dark:text-amber-400">{agentDeleteRequest}</p>
                     </div>
                   )}
+                  {selectedModification && (
+                    <div className="mt-4 mb-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">M</span>
+                        <p className="text-xs font-medium text-zinc-700 dark:text-slate-300">Proposed Changes</p>
+                      </div>
+                      <div className="border border-gray-200 dark:border-zinc-700 rounded overflow-hidden max-h-80 overflow-y-auto mb-4">
+                        <table className="w-full text-xs font-mono border-collapse">
+                          <tbody>
+                            {diffLines.map((line, idx) => (
+                              <tr key={idx} className={line.type === 'add' ? 'bg-green-50 dark:bg-green-950' : line.type === 'remove' ? 'bg-red-50 dark:bg-red-950' : ''}>
+                                <td className="w-8 text-right px-2 py-0.5 text-zinc-400 dark:text-slate-500 select-none border-r border-gray-100 dark:border-zinc-800"
+                                  style={{ borderLeft: line.type === 'add' ? '3px solid rgba(34,197,94,.8)' : line.type === 'remove' ? '3px solid rgba(239,68,68,.8)' : '3px solid transparent' }}>
+                                  {idx + 1}
+                                </td>
+                                <td className="w-5 px-1 py-0.5 text-center font-bold select-none"
+                                  style={{ color: line.type === 'add' ? 'rgb(21,128,61)' : line.type === 'remove' ? 'rgb(185,28,28)' : 'transparent' }}>
+                                  {line.type === 'add' ? '+' : line.type === 'remove' ? '−' : ' '}
+                                </td>
+                                <td className={`px-2 py-0.5 whitespace-pre-wrap break-words ${line.type === 'add' ? 'text-green-700 dark:text-green-300' : line.type === 'remove' ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-slate-400'}`}>
+                                  {line.text}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-4">
+                    <label className="text-xs font-medium text-zinc-500 dark:text-slate-400 block mb-1">
+                      Update Guidance
+                      {guidanceSaving && <span className="ml-2 text-zinc-400 dark:text-slate-500">saving…</span>}
+                    </label>
+                    <textarea
+                      className="w-full text-xs border border-gray-200 dark:border-zinc-700 rounded px-2 py-1.5 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-slate-300 resize-none"
+                      rows={3}
+                      placeholder="Describe how this file should be updated (e.g. 'always append new bugs as bullet points under Key Bugs'). Saved as preference."
+                      value={fileGuidance}
+                      onChange={e => setFileGuidance(e.target.value)}
+                      onBlur={e => { if (selectedContent) void saveGuidance(selectedContent.path, e.target.value) }}
+                    />
+                  </div>
                   <div className="mt-3 max-h-[70vh] overflow-y-auto pr-1">
                     {renderMarkdownFriendly(selectedContent.content)}
                   </div>

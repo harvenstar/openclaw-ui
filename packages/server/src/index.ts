@@ -17,6 +17,8 @@ import {
   readMemoryFileContent,
   removeMemoryFileFromContext,
   updateMemoryPreferences,
+  readFileGuidance,
+  writeFileGuidance,
 } from './memory.js'
 
 const app = express()
@@ -408,6 +410,21 @@ app.get('/api/memory/file', (req, res) => {
   res.json(file)
 })
 
+app.get('/api/memory/guidance', (req, res) => {
+  const filePath = typeof req.query.path === 'string' ? req.query.path : ''
+  if (!filePath) return res.status(400).json({ error: 'Missing path query' })
+  const guidance = readFileGuidance(filePath)
+  res.json({ path: filePath, guidance })
+})
+
+app.post('/api/memory/guidance', (req, res) => {
+  const filePath = typeof req.body?.path === 'string' ? req.body.path : ''
+  const guidance = typeof req.body?.guidance === 'string' ? req.body.guidance : ''
+  if (!filePath) return res.status(400).json({ error: 'Missing path in request body' })
+  writeFileGuidance(filePath, guidance)
+  res.json({ ok: true, path: filePath, guidance })
+})
+
 app.post('/api/memory/include', (req, res) => {
   const projectRoot = join(__dirname, '../../..')
   const filePath = typeof req.body?.path === 'string' ? req.body.path : ''
@@ -485,7 +502,7 @@ app.post('/api/memory/review/create', async (req, res) => {
 })
 
 app.post('/api/memory/management/create', async (req, res) => {
-  const { sessionKey, noOpen, openHome, currentContextFiles, extraMarkdownDirs, searchQuery } = req.body ?? {}
+  const { sessionKey, noOpen, openHome, currentContextFiles, extraMarkdownDirs, searchQuery, modifications } = req.body ?? {}
   const projectRoot = join(__dirname, '../../..')
   const catalog = buildMemoryCatalog({
     projectRoot,
@@ -499,7 +516,7 @@ app.post('/api/memory/management/create', async (req, res) => {
   createSession({
     id,
     type: 'memory_management',
-    payload: catalog,
+    payload: { ...catalog, modifications: Array.isArray(modifications) ? modifications : [] },
     sessionKey,
     status: 'pending',
     pageStatus: { state: 'created', updatedAt: now },
