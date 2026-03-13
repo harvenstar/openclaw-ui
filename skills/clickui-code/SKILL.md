@@ -48,24 +48,24 @@ RESPONSE=$(curl -s -X POST "$AGENTCLICK_BASE/api/review" \
       "risk": "low|medium|high",
       "affectedFiles": [
         {
-          "path": "src/utils/retry.ts",
+          "path": "backend/src/utils/retry.ts",
           "status": "added",
           "diff": "@@ -0,0 +1,12 @@\n+export async function retry<T>(fn: () => Promise<T>, times = 3): Promise<T> {\n+  let last: unknown\n+  for (let i = 0; i < times; i++) {\n+    try { return await fn() } catch (e) { last = e }\n+  }\n+  throw last\n+}"
         },
         {
-          "path": "src/api/client.ts",
+          "path": "backend/src/api/client.ts",
           "status": "modified",
           "diff": "@@ -1,8 +1,9 @@\n import axios from '\''axios'\''\n+import { retry } from '\''../utils/retry'\''\n \n export async function fetchUser(id: string) {\n-  return axios.get(`/users/${id}`)\n+  return retry(() => axios.get(`/users/${id}`))\n }"
         },
         {
-          "path": "src/api/legacyClient.ts",
+          "path": "backend/src/api/legacyClient.ts",
           "status": "deleted",
           "diff": "@@ -1,5 +0,0 @@\n-// deprecated — use client.ts\n-import axios from '\''axios'\''\n-export const get = (url: string) => axios.get(url)"
         },
         {
-          "path": "src/api/index.ts",
+          "path": "backend/src/api/index.ts",
           "status": "renamed",
-          "oldPath": "src/api/exports.ts",
+          "oldPath": "backend/src/api/exports.ts",
           "diff": "@@ -1,2 +1,2 @@\n-export * from '\''./legacyClient'\''\n+export * from '\''./client'\''"
         }
       ]
@@ -79,14 +79,14 @@ echo "Session: $SESSION_ID"
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `path` | yes | File path relative to project root (e.g. `packages/web/src/pages/Foo.tsx`) |
+| `path` | yes | File path relative to project root |
 | `status` | yes | `"added"` \| `"modified"` \| `"deleted"` \| `"renamed"` |
 | `diff` | **recommended** | Unified diff string — shown as a GitHub-style diff in the review UI |
 | `oldPath` | no | Previous path, only for `"renamed"` files |
 
 If you cannot generate a diff (e.g. the command doesn't touch tracked files), omit `diff` and the file will still appear in the mind-map tree without a diff panel.
 
-**Legacy fallback**: If you only have a flat list of paths and no diffs, use `"files": ["src/index.ts", ...]` instead of `affectedFiles`. The UI will show the tree without diff panels.
+**Legacy fallback**: If you only have a flat list of paths and no diffs, use `"files": ["backend/src/index.ts", ...]` instead of `affectedFiles`. Paths must still be relative to project root. The UI will show the tree without diff panels.
 
 ## Step 3: Poll for decision
 
