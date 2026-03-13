@@ -95,7 +95,7 @@ Submit a multi-step agent execution trajectory to AgentClick for human review. T
 | `pending` | Step not yet executed            |
 | `skipped` | Step was skipped                 |
 
-## Submitting a Trajectory
+## Step 1: Health check
 
 ```bash
 if curl -s --max-time 1 http://localhost:38173/api/health > /dev/null 2>&1; then
@@ -103,8 +103,12 @@ if curl -s --max-time 1 http://localhost:38173/api/health > /dev/null 2>&1; then
 else
   AGENTCLICK_BASE="http://host.docker.internal:38173"
 fi
+```
 
-curl -X POST "$AGENTCLICK_BASE/api/review" \
+## Step 2: Create the session
+
+```bash
+RESPONSE=$(curl -s -X POST "$AGENTCLICK_BASE/api/review" \
   -H 'Content-Type: application/json' \
   -d '{
     "type": "trajectory_review",
@@ -116,36 +120,36 @@ curl -X POST "$AGENTCLICK_BASE/api/review" \
         { "id": "s2", "type": "error", "label": "Parse failed", "status": "failure", "error": { "message": "Invalid JSON" } }
       ]
     }
-  }'
+  }')
+SESSION_ID=$(echo "$RESPONSE" | grep -o '"sessionId":"[^"]*"' | cut -d'"' -f4)
 ```
 
-On submission, AgentClick opens the trajectory review page.
+## Step 3: Monitor the session
 
-## Polling for Result
-
-After submitting, poll for the human's response using environment detection:
+After creating the session, stay attached and respond to user actions.
 
 ```bash
-# Detect environment: GOG_ACCOUNT is set in Docker (docker-compose.yml), absent elsewhere
+# Detect environment: GOG_ACCOUNT is set in Docker, absent elsewhere
 if [ -n "$GOG_ACCOUNT" ]; then
-  # Docker: use short-poll (one curl per exec, you are the loop controller)
   curl -s "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}"
 else
-  # Non-Docker: use blocking /wait
   curl -s --max-time 310 "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}/wait"
 fi
 ```
 
-- In Docker (`GOG_ACCOUNT` set): run ONE curl per exec call, check result in your context, then poll again. Do NOT use a bash while loop. You are the loop controller.
-- In non-Docker: the `/wait` call blocks until state changes, then process the result.
+After each poll result:
+- If `pageStatus.stopMonitoring` is `true` → **stop immediately** (user clicked Stop Monitoring)
+- If `status` is `"completed"` → read result and stop
+- If `status` is `"rewriting"` → handle the retry request (see Step 4), then poll again
+- Otherwise → wait 1 second, then poll again
 
-## Result Schema
+## Step 4: Handle retry requests
 
-The human's response is returned via `/api/sessions/:id` (poll) or `/api/sessions/:id/wait` (non-Docker blocking):
+When `/wait` returns `status: "rewriting"`, the user clicked "Request Retry". The result contains:
 
 ```json
 {
-  "approved": true,
+  "approved": false,
   "revisions": [
     {
       "stepId": "s3",
@@ -160,13 +164,30 @@ The human's response is returned via `/api/sessions/:id` (poll) or `/api/session
 }
 ```
 
-## Rewrite Cycle
+Agent must:
+1. Read `revisions` — for each, apply corrections to the affected steps
+2. Read `globalNote` — treat as an overarching instruction
+3. Read `resumeFromStep` — re-execute from that step if instructed
+4. PUT the updated trajectory payload back so the page reflects the new steps:
 
-1. Human reviews trajectory and clicks "Request Retry"
-2. Agent's poll (or `/wait` in non-Docker) resolves with `status: "rewriting"`
-3. Agent applies corrections, re-executes from `resumeFromStep`
-4. Agent PUTs updated payload: `PUT /api/sessions/:id/payload`
-5. Human reviews again (status resets to `pending`)
+```bash
+curl -s -X PUT "$AGENTCLICK_BASE/api/sessions/${SESSION_ID}/payload" \
+  -H 'Content-Type: application/json' \
+  -d '{"payload": {"title": "...", "steps": [...updated steps...]}}'
+```
+
+5. Poll again — the page will show the updated trajectory for the next review round.
+
+## Result Schema (on completion)
+
+```json
+{
+  "approved": true,
+  "revisions": [...],
+  "globalNote": "...",
+  "resumeFromStep": "s3"
+}
+```
 
 ## Learning
 

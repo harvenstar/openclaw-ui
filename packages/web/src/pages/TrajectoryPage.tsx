@@ -1028,6 +1028,15 @@ function TrajectoryPageInner() {
     setSubmitting(false)
   }
 
+  const stopMonitoring = async () => {
+    await fetch(`/api/sessions/${id}/page-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: 'hidden', stopMonitoring: true, reason: 'user_stopped' }),
+    })
+    navigate('/')
+  }
+
   // ─── Render states ──────────────────────────────────────────────────────────
 
   if (fetchError) return (
@@ -1073,7 +1082,7 @@ function TrajectoryPageInner() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
-      <div className="max-w-4xl mx-auto py-10 px-4">
+      <div className="max-w-full mx-auto py-10 px-4">
 
         {/* Header */}
         <div className="mb-6">
@@ -1169,6 +1178,13 @@ function TrajectoryPageInner() {
             className={`px-5 text-sm text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 transition-colors ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             Reject
+          </button>
+          <button
+            onClick={stopMonitoring}
+            disabled={submitting}
+            className={`px-5 text-sm text-zinc-400 dark:text-zinc-500 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            Stop Monitoring
           </button>
         </div>
 
